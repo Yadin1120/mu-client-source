@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Text_0" xml:space="preserve"><value>כן? משהו שאתה צריך?</value></data>
+  <data name="Text_1" xml:space="preserve"><value>שלום! אני פאסי הקוסם. חה-חה-חה! הממ... תנועת הכוכבים לא נראית לי כשורה. העתיד שלך... הממ... גם אותו אני לא מצליח לראות... משונה...</value></data>
+  <data name="Text_2" xml:space="preserve"><value>שלום! שמי באז, שומר הכספת. אני יכול לעזור לך בכל מקום שאליו תלך — אל תהסס להפקיד אצלי את החפצים שלך.</value></data>
+  <data name="Text_3" xml:space="preserve"><value>הרבה הרפתקנים סיפרו לי שצליל הנבל מרגיע ומפוגג את העייפות. אתה צריך את עזרתי?</value></data>
+  <data name="Text_4" xml:space="preserve"><value>שלום! שמי באז, שומר הכספת. אני יכול לעזור לך בכל מקום שאליו תלך — אל תהסס להפקיד אצלי את החפצים שלך.</value></data>
+  <data name="Text_5" xml:space="preserve"><value>הבאת מספיק כסף? בלעדיו אני לא יכול לשלב את הפריטים, כי המחקר שלי עולה כסף. הבנת? רוצה לדעת כמה זה יעלה?</value></data>
+  <data name="Text_6" xml:space="preserve"><value>ברוך הבא ל-MU! לחץ F1 בכל פעם שתצטרך עזרה במסעותיך ביבשת.</value></data>
+  <data name="Text_7" xml:space="preserve"><value>זו הפעם הראשונה שלך בלורנסיה? צא ביציאה הדרום-מזרחית, זו שמול המזרקה, ונסה לצוד דרקוני באדג' או עכבישים. לוחמי השלדים שבצפון-מערב מסוכנים לך מדי בשלב הזה.</value></data>
+  <data name="Text_8" xml:space="preserve"><value>ברוכה הבאה לנוריה. אם זו הפעם הראשונה שלך, עברי ליד שומר הכספת וצאי ביציאה הדרומית. התחילי ממפלצות חלשות כמו עקרבי שרשרת או גובלינים.</value></data>
+  <data name="Text_9" xml:space="preserve"><value>מדריך מפורט ליבשת MU מחכה לך באתר שלנו: mu-ai.online</value></data>
+  <data name="Text_50" xml:space="preserve"><value>אומרים ש'מגילת הקיסר', המספרת על מורן — הקיסר הראשון של MU — נראתה באזור המגדל האבוד, אטלנס והמבוך.</value></data>
+  <data name="Answer_50_Slot_0" xml:space="preserve"><value>לא ידעתי שדבר כזה בכלל קיים...</value></data>
+  <data name="Text_51" xml:space="preserve"><value>המנחה שלך לאל אינה מספקת. אספר לך את דבר הנבואה אם תקריב מיליון זן.</value></data>
+  <data name="Answer_51_Slot_0" xml:space="preserve"><value>אחזור עם מיליון זן.</value></data>
+  <data name="Text_52" xml:space="preserve"><value>אומרים ש'מגילת הקיסר', המספרת על מורן — הקיסר הראשון שאיחד את MU — נראתה באזור המגדל האבוד, אטלנס והמבוך.</value></data>
+  <data name="Answer_52_Slot_0" xml:space="preserve"><value>ספר לי עוד.</value></data>
+  <data name="Text_53" xml:space="preserve"><value>'מגילת הקיסר' עטופה בכוח אדיר, וכל מי שיקרא בה יבורך באותו כוח.</value></data>
+  <data name="Answer_53_Slot_0" xml:space="preserve"><value>ספר לי את הסיפור שוב.</value></data>
+  <data name="Answer_53_Slot_1" xml:space="preserve"><value>אצא לחפש אותה.</value></data>
+  <data name="Answer_53_Slot_2" xml:space="preserve"><value>לא מעניין אותי.</value></data>
+  <data name="Text_54" xml:space="preserve"><value>צא לחפש את 'מגילת הקיסר'. הקריאה בה תעניק לך כוח רב.</value></data>
+  <data name="Answer_54_Slot_0" xml:space="preserve"><value>אצא לחפש אותה.</value></data>
+  <data name="Text_55" xml:space="preserve"><value>מצאת את 'מגילת הקיסר'! כאן נרשם בכוח הקסם טקס האיחוד של מורן, הקיסר הראשון של האימפריה. מי שמחזיק במגילה זוכה בכוח רב.</value></data>
+  <data name="Answer_55_Slot_0" xml:space="preserve"><value>ספר לי מה כתוב בה.</value></data>
+  <data name="Text_56" xml:space="preserve"><value>המגילה מתעדת כיצד ניצח מורן את כל אדוני המלחמה, הביא שלום ליבשת ואיחד אותה לאימפריית MU.</value></data>
+  <data name="Answer_56_Slot_0" xml:space="preserve"><value>המשך בבקשה.</value></data>
+  <data name="Text_57" xml:space="preserve"><value>מורן היה אחד משלושת הגיבורים ששמו קץ לתוהו שהביאה פלישתו של סקנאום.</value></data>
+  <data name="Answer_57_Slot_0" xml:space="preserve"><value>חזור לסיפור הקודם.</value></data>
+  <data name="Answer_57_Slot_1" xml:space="preserve"><value>המשך בבקשה.</value></data>
+  <data name="Text_58" xml:space="preserve"><value>שלושה חפצי קסם נותרו מאותם ימים: 'חרב שבורה', 'דמעת האלף' ו'נשמת הקוסם'. את החרב השבורה הקריבו האבירים האפלים כאות לאומץ ליבם, לנאמנותם ולתקוותם לשגשוג.</value></data>
+  <data name="Answer_58_Slot_0" xml:space="preserve"><value>חזור לסיפור הקודם.</value></data>
+  <data name="Answer_58_Slot_1" xml:space="preserve"><value>המשך בבקשה.</value></data>
+  <data name="Text_59" xml:space="preserve"><value>את 'נשמת הקוסם' הקריבו הקוסמים האפלים כאות לשבועתם להשתמש בכוחם למען שלומה וחירותה של האימפריה. שנת 10 למניין MU — מתוך תעודת השלום...</value></data>
+  <data name="Answer_59_Slot_0" xml:space="preserve"><value>חזור לסיפור הקודם.</value></data>
+  <data name="Answer_59_Slot_1" xml:space="preserve"><value>אז ככה זה היה...</value></data>
+  <data name="Text_60" xml:space="preserve"><value>אם קראת את 'מגילת הקיסר', חפש עכשיו את 'החרב השבורה' שבה השתמשו האבירים האפלים הקדמונים בטקס השלום. שמעתי שכמה אבירים מצאו אותה באטלנס, במגדל האבוד ובטרקן.</value></data>
+  <data name="Answer_60_Slot_0" xml:space="preserve"><value>אמצא אותה.</value></data>
+  <data name="Answer_60_Slot_1" xml:space="preserve"><value>אני מוותר.</value></data>
+  <data name="Text_61" xml:space="preserve"><value>סכנה אורבת שם בכל פינה, ו'החרב השבורה' אינה מתגלה בקלות. אבל אם תמצא אותה — כוח חדש יוענק לך! חזור אליי ברגע שהיא בידך.</value></data>
+  <data name="Answer_61_Slot_0" xml:space="preserve"><value>אמצא אותה ואחזור.</value></data>
+  <data name="Text_62" xml:space="preserve"><value>אביר אפל אמיץ, מצאת את 'החרב השבורה'! אחרי איחוד היבשת שבר מורן, הקיסר הראשון, את חרבו 'אפוקליפסה' — כאות למשאלתו שלא תפרוץ עוד מלחמה לעולם.</value></data>
+  <data name="Answer_62_Slot_0" xml:space="preserve"><value>ספר לי עוד.</value></data>
+  <data name="Text_63" xml:space="preserve"><value>מאז המלחמה יוצאים אבירים אפלים שרוצים להיות אבירי להב לחפש את 'החרב השבורה' הקדומה, כדי להוכיח את אומץ ליבם.</value></data>
+  <data name="Answer_63_Slot_0" xml:space="preserve"><value>אז ככה זה קרה!</value></data>
+  <data name="Text_64" xml:space="preserve"><value>קראת את 'מגילת הקיסר', נכון? אז את בוודאי יודעת על שלושת האוצרות שנרשמו בה. צאי ומצאי את גביש 'דמעת האלף', שיצרו האלפים הקדמונים בכוח הרוח.</value></data>
+  <data name="Answer_64_Slot_0" xml:space="preserve"><value>ספר לי עוד בבקשה.</value></data>
+  <data name="Text_65" xml:space="preserve"><value>המקום ההוא מסוכן מאוד, ו'דמעת האלף' קשה למצוא עד מאוד. אבל אם תמצאי אותה, כוח חדש יוענק לך. צאי עכשיו, מצאי אותה, וחזרי אליי.</value></data>
+  <data name="Answer_65_Slot_0" xml:space="preserve"><value>אצא לחפש את 'דמעת האלף'!</value></data>
+  <data name="Text_66" xml:space="preserve"><value>מצאת את 'דמעת האלף'! אחרי המלחמה יצרה לונדיל, מלכת האלפים, את אבן הדמעה — היא הטילה קסם על אבן הרוח, כדי שהאלפים יוכלו לקרוא לכוחה של האלה ולחשל את כוחם.</value></data>
+  <data name="Answer_66_Slot_0" xml:space="preserve"><value>המשך בבקשה.</value></data>
+  <data name="Text_67" xml:space="preserve"><value>קראת את 'מגילת הקיסר', נכון? אז אתה בוודאי יודע על שלושת האוצרות שנרשמו בה.</value></data>
+  <data name="Answer_67_Slot_0" xml:space="preserve"><value>המשך בבקשה.</value></data>
+  <data name="Text_68" xml:space="preserve"><value>עם הכוח שיש בך, אני בטוח שתמצא את 'נשמת הקוסם'. צא לדרך, ומצא אותה — וחזור אליי כשהיא בידך.</value></data>
+  <data name="Answer_68_Slot_0" xml:space="preserve"><value>אצא לחפש את 'נשמת הקוסם'.</value></data>
+  <data name="Text_69" xml:space="preserve"><value>ידעתי שתמצא את 'נשמת הקוסם'! אטרמו, גדול הקוסמים של ארקה, יצר אבן קסם המגנה על הנשמה — מחשש שהאבירים האפלים החלשים ייכשלו מול מתקפתו של קונדון.</value></data>
+  <data name="Answer_69_Slot_0" xml:space="preserve"><value>ספר לי עוד בבקשה.</value></data>
+  <data name="Text_70" xml:space="preserve"><value>קוסם אפל שאוחז באבן הקסם הזו הופך למאסטר נשמות.</value></data>
+  <data name="Answer_70_Slot_0" xml:space="preserve"><value>עכשיו אני מאסטר נשמות!</value></data>
+  <data name="Text_71" xml:space="preserve"><value>המנחה שלך לאל אינה מספקת. אספר לך את דבר הנבואה אם תקריב שני מיליון זן.</value></data>
+  <data name="Answer_71_Slot_0" xml:space="preserve"><value>אחזור עם שני מיליון זן.</value></data>
+  <data name="Text_72" xml:space="preserve"><value>כוח חדש הוענק לך, בזכות עוצמתך ורוחך האיתנה. שחסדו של לוגארד ילווה אותך תמיד.</value></data>
+  <data name="Answer_72_Slot_0" xml:space="preserve"><value>שחסד האל יהיה עמך...</value></data>
+  <data name="Text_73" xml:space="preserve"><value>כבר יש בך כוח רב. אין לי נבואה עבורך כרגע.</value></data>
+  <data name="Answer_73_Slot_0" xml:space="preserve"><value>אחזור בהמשך.</value></data>
+  <data name="Text_74" xml:space="preserve"><value>חזור אליי כשתתחזק.</value></data>
+  <data name="Answer_74_Slot_0" xml:space="preserve"><value>אחזור כשאתחזק.</value></data>
+  <data name="Text_75" xml:space="preserve"><value>כשתהיה לוחם חזק דיו, תוכל למצוא אותה.</value></data>
+  <data name="Answer_75_Slot_0" xml:space="preserve"><value>המשך בבקשה.</value></data>
+  <data name="Text_76" xml:space="preserve"><value>מאז נולד המנהג: אבירים אפלים שביקשו להיות אבירי להב שברו את חרבותיהם, כשבועה שלא להניף חרב בעוול לעולם.</value></data>
+  <data name="Answer_76_Slot_0" xml:space="preserve"><value>ספר לי עוד.</value></data>
+  <data name="Text_77" xml:space="preserve"><value>כמה מהאלפים ההרפתקנים סיפרו שראו אותם במגדל האבוד, באטלנס ובטרקן.</value></data>
+  <data name="Answer_77_Slot_0" xml:space="preserve"><value>אצא לחפש!</value></data>
+  <data name="Answer_77_Slot_1" xml:space="preserve"><value>אין לי חשק ללכת למקום כזה.</value></data>
+  <data name="Text_78" xml:space="preserve"><value>זוהי 'דמעת האלף'. האלפית שמוצאת את האבן הזו הופכת לאלפית מוזה, ויכולה לקרוא לכוחן של אלות האלפים.</value></data>
+  <data name="Answer_78_Slot_0" xml:space="preserve"><value>הפכתי לאלפית מוזה!</value></data>
+  <data name="Text_79" xml:space="preserve"><value>מצאת גם את 'מגילת הקיסר' וגם את 'החרב השבורה' — מהיום ואילך תיקרא אביר להב.</value></data>
+  <data name="Answer_79_Slot_0" xml:space="preserve"><value>הפכתי לאביר להב!</value></data>
+  <data name="Text_80" xml:space="preserve"><value>אחרי שאוחדה האימפריה נשבעו האנשים אמונים לקיסר, ואלה האוצרות שהוקרבו כאות לנאמנותם.</value></data>
+  <data name="Answer_80_Slot_0" xml:space="preserve"><value>חזור לסיפור הקודם.</value></data>
+  <data name="Answer_80_Slot_1" xml:space="preserve"><value>המשך בבקשה.</value></data>
+  <data name="Text_81" xml:space="preserve"><value>את 'דמעת האלף' הקריבו האלפים כאות לשבועתם לחשל יחד את כוחם של האלפים ובני האדם.</value></data>
+  <data name="Answer_81_Slot_0" xml:space="preserve"><value>חזור לסיפור הקודם.</value></data>
+  <data name="Answer_81_Slot_1" xml:space="preserve"><value>המשך בבקשה.</value></data>
+  <data name="Text_82" xml:space="preserve"><value>צא לחפש את 'נשמת הקוסם'. לפי הקוסמים האפלים הקדמונים היא נראתה לאחרונה באזור המגדל האבוד, אטלנס וטרקן.</value></data>
+  <data name="Answer_82_Slot_0" xml:space="preserve"><value>אצא לחפש אותה.</value></data>
+  <data name="Answer_82_Slot_1" xml:space="preserve"><value>אחזור בהמשך.</value></data>
+  <data name="Text_90" xml:space="preserve"><value>סיימת לקרוא את 'מגילת הקיסר'. אבל האם ידעת על ההסכם הסודי בין מורן לסמדן, ראש המזמנות? תמורת סיפוחה של אלבה לאימפריה הובטח למורן דבר אחד.</value></data>
+  <data name="Answer_90_Slot_0" xml:space="preserve"><value>אני מקשיבה.</value></data>
+  <data name="Text_91" xml:space="preserve"><value>ביבשת MU היה שער ממדים שהמזמנות שמרו עליו, וסמדן מסרה את 'עין התהום' כערובה להבטחה. לכי והביאי אותה בחזרה.</value></data>
+  <data name="Answer_91_Slot_0" xml:space="preserve"><value>מקבלת את המשימה</value></data>
+  <data name="Answer_91_Slot_1" xml:space="preserve"><value>דוחה את המשימה</value></data>
+  <data name="Text_92" xml:space="preserve"><value>שמעתי ש'עין התהום' נמצאה באזור אטלנס, המגדל האבוד וטרקן. חזרי אליי ברגע שתמצאי אותה.</value></data>
+  <data name="Answer_92_Slot_0" xml:space="preserve"><value>לסיים את השיחה</value></data>
+  <data name="Text_93" xml:space="preserve"><value>מצאת את 'עין התהום'. אומרים שהיא עשויה מיסוד שאינו קיים בעולם הזה — שריד מעולם שקדם לנו, ועמו חוזרים גם הזיכרונות.</value></data>
+  <data name="Answer_93_Slot_0" xml:space="preserve"><value>אני מקשיבה.</value></data>
+  <data name="Text_94" xml:space="preserve"><value>ל'עין התהום' יש משמעות מיוחדת עבורי, שהרי אני משגיחה על הממדים ומדברת דרכם. אם תביאי אותה בחזרה, אעניק לך את התואר מכשפת דמים בשמה של סמדן, שומרת הממד שלך.</value></data>
+  <data name="Answer_94_Slot_0" xml:space="preserve"><value>לקבל את התואר מכשפת דמים</value></data>
+  <data name="Text_100" xml:space="preserve"><value>כדי לזכות בברכתו ובכוחו של מורן דרוש האוצר האגדי 'טבעת הכבוד'. היא שבה והופיעה באדמותינו — אבל אתה עדיין לא מוכן. חכה עד שתצבור ניסיון.</value></data>
+  <data name="Answer_100_Slot_0" xml:space="preserve"><value>אז מה עליי לעשות?</value></data>
+  <data name="Text_101" xml:space="preserve"><value>דרוש ניסיון רב יותר כדי לשרוד את המשימה הזו. חזור כשתגיע לרמה 220, כפי שדורשים מבחני האימפריה האבודה.</value></data>
+  <data name="Answer_101_Slot_0" xml:space="preserve"><value>אחזור כשיגיע זמני.</value></data>
+  <data name="Text_102" xml:space="preserve"><value>כדי לזכות בברכתו ובכוחו של מורן דרוש האוצר האגדי 'טבעת הכבוד'. היא שבה והופיעה באדמותינו.</value></data>
+  <data name="Answer_102_Slot_0" xml:space="preserve"><value>אני רוצה לשמוע עוד.</value></data>
+  <data name="Text_103" xml:space="preserve"><value>מי שמחזיק ב'טבעת הכבוד' זוכה בברכתו של מורן. אומרים שהיא נמצאת במדבריות שמעבר לים.</value></data>
+  <data name="Answer_103_Slot_0" xml:space="preserve"><value>למה דווקא שם?</value></data>
+  <data name="Text_104" xml:space="preserve"><value>המפלצות שם חזקות למדי — והטבעת נמצאת אצלן.</value></data>
+  <data name="Answer_104_Slot_0" xml:space="preserve"><value>ספר לי את הסיפור שוב.</value></data>
+  <data name="Answer_104_Slot_1" xml:space="preserve"><value>אנסה.</value></data>
+  <data name="Answer_104_Slot_2" xml:space="preserve"><value>אני עדיין לא מוכן.</value></data>
+  <data name="Text_105" xml:space="preserve"><value>ייתכן ש'טבעת הכבוד' קרובה יותר משנדמה לך. כשתשיג אותה תרגיש בבירור את השינוי בכוחך — אבל זו לא תהיה משימה קלה.</value></data>
+  <data name="Answer_105_Slot_0" xml:space="preserve"><value>אחזור איתה.</value></data>
+  <data name="Text_108" xml:space="preserve"><value>זוהי אכן 'טבעת הכבוד'. היא זוהרת בהילה מסתורית, אף יותר משדמיינתי. באגדה שלה טמון עומק שאינך יכול לתפוס. ברכה של ממש הגיעה לידיך.</value></data>
+  <data name="Answer_108_Slot_0" xml:space="preserve"><value>אני מבין.</value></data>
+  <data name="Text_109" xml:space="preserve"><value>אומרים שהטבעת משיבה חיים ומעניקה נעורי נצח — אבל היא פועלת רק עבור גיבורים שיש בהם הכוח לשאת אותה.</value></data>
+  <data name="Answer_109_Slot_0" xml:space="preserve"><value>למה דווקא כך?</value></data>
+  <data name="Text_110" xml:space="preserve"><value>משום שאטרמו, קוסם ארקה, הטיל עליה כישוף כדי שהרשע לא ינצל אותה. אבל הטבעת אומרת שאתה ראוי לה.</value></data>
+  <data name="Answer_110_Slot_0" xml:space="preserve"><value>באמת?</value></data>
+  <data name="Text_111" xml:space="preserve"><value>'טבעת הכבוד' נוצרה ממתכת בלתי-כלה, יחד עם ספר הנבואה סקרומיקון. שניהם נחשבו קדושים, אך עקבותיהם נעלמו כשנלקחו במרד של גאיון, סגן המפקד.</value></data>
+  <data name="Answer_111_Slot_0" xml:space="preserve"><value>באמת?!</value></data>
+  <data name="Text_112" xml:space="preserve"><value>עכשיו, כש'טבעת הכבוד' נמצאה, תוכל לגדול עוד כלוחם.</value></data>
+  <data name="Answer_112_Slot_0" xml:space="preserve"><value>אני מרגיש את הכוח שלי גדל!</value></data>
+  <data name="Text_113" xml:space="preserve"><value>תהפוך להרבה יותר ממה שהיית. השתמש בכוחך למען שלומה של האימפריה.</value></data>
+  <data name="Answer_113_Slot_0" xml:space="preserve"><value>כך אעשה.</value></data>
+  <data name="Text_114" xml:space="preserve"><value>הכוח הקדוש כבר שוכן בך.</value></data>
+  <data name="Answer_114_Slot_0" xml:space="preserve"><value>אחזור בהמשך.</value></data>
+  <data name="Text_115" xml:space="preserve"><value>'האבן האפלה', שאומרים כי היא מעניקה ללוחמים כוח חדש, נמצאה ביבשת MU. אבל אתה עדיין לא מוכן לשאת כוח כזה. חכה עד שתהיה.</value></data>
+  <data name="Answer_115_Slot_0" xml:space="preserve"><value>אחזור כשאהיה מוכן.</value></data>
+  <data name="Text_116" xml:space="preserve"><value>כדי לקבל את מלוא הכוח עליך להצטייד ב'מגילת הקיסר', המתעדת את קורותיו של הקיסר מורן. לך אל סווינה הכוהנת בדביאס.</value></data>
+  <data name="Answer_116_Slot_0" xml:space="preserve"><value>אחזור כשאהיה מוכן.</value></data>
+  <data name="Text_117" xml:space="preserve"><value>עדיין לא הפכת לאביר להב. חזור אחרי שתקבל כוח חדש באמצעות 'טבעת הכבוד'.</value></data>
+  <data name="Answer_117_Slot_0" xml:space="preserve"><value>אחזור כשאהיה מוכן.</value></data>
+  <data name="Text_118" xml:space="preserve"><value>עליך להקריב שלושה מיליון זן לאלים כדי לקדש את המשימה, ואין לך מספיק זן.</value></data>
+  <data name="Answer_118_Slot_0" xml:space="preserve"><value>אחזור עם שלושה מיליון זן.</value></data>
+  <data name="Text_119" xml:space="preserve"><value>המנחה שלך לאל אינה מספקת. אספר לך את דבר הנבואה אם תקריב שני מיליון זן.</value></data>
+  <data name="Answer_119_Slot_0" xml:space="preserve"><value>אחזור עם שני מיליון זן.</value></data>
+  <data name="Text_130" xml:space="preserve"><value>זוהי אכן 'טבעת הכבוד'. ראה איך היא זוהרת. אצורים בה זמן ואגדה שאינך יכול להתחיל לתפוס — ברכה היא שמצאת אותה!</value></data>
+  <data name="Answer_130_Slot_0" xml:space="preserve"><value>אני מופתע לשמוע!</value></data>
+  <data name="Text_131" xml:space="preserve"><value>כן. אומרים שיש בטבעת כוח להשיב מתים לחיים ולהעניק נעורי נצח, אבל היא תגלה את מלוא כוחה רק בידי גיבור אמיתי שיודע לרסן אותו.</value></data>
+  <data name="Answer_131_Slot_0" xml:space="preserve"><value>למה דווקא כך?</value></data>
+  <data name="Text_132" xml:space="preserve"><value>משום שאטרמו, קוסם ארקה, הטיל עליה כישוף כדי שלא תיפול לידיים הלא נכונות. ונראה שאתה בדיוק האיש הנכון!</value></data>
+  <data name="Answer_132_Slot_0" xml:space="preserve"><value>באמת!</value></data>
+  <data name="Text_133" xml:space="preserve"><value>'טבעת הכבוד' נוצרה ממתכת בלתי-כלה, יחד עם ספר הנבואה סקרומיקון. שניהם נחשבו קדושים, אך עקבותיהם נעלמו כשנלקחו במרד של גאיון, סגן המפקד.</value></data>
+  <data name="Answer_133_Slot_0" xml:space="preserve"><value>באמת!</value></data>
+  <data name="Text_134" xml:space="preserve"><value>עכשיו, כש'טבעת הכבוד' נמצאה, תוכל לגדול עוד כלוחם.</value></data>
+  <data name="Answer_134_Slot_0" xml:space="preserve"><value>אני מרגיש את הכוח שלי גדל!</value></data>
+  <data name="Text_135" xml:space="preserve"><value>אם ברצונך לקבל כוח חדש, הקשב לי היטב. 'האבן האפלה', שאומרים כי היא מעניקה ללוחמים כוח חדש, נמצאה ביבשת MU.</value></data>
+  <data name="Answer_135_Slot_0" xml:space="preserve"><value>אני רוצה לשמוע עוד.</value></data>
+  <data name="Text_136" xml:space="preserve"><value>עם 'האבן האפלה' תוכל לשלוט ביכולת חדשה. זו לא תהיה משימה קלה, אבל מי שהשיג את 'טבעת הכבוד' — אולי גם זה בהישג ידו.</value></data>
+  <data name="Answer_136_Slot_0" xml:space="preserve"><value>מה עליי לעשות?</value></data>
+  <data name="Text_137" xml:space="preserve"><value>השמועה אומרת שאפשר למצוא את האבן בטרקן ובאיקרוס. היזהר מהמפלצות שם — אלו שמחזיקות באבן מגיבות רק למי שיש בו יכולת מיוחדת.</value></data>
+  <data name="Answer_137_Slot_0" xml:space="preserve"><value>ספר לי את הסיפור שוב.</value></data>
+  <data name="Answer_137_Slot_1" xml:space="preserve"><value>אז אנסה!</value></data>
+  <data name="Answer_137_Slot_2" xml:space="preserve"><value>אני עדיין לא בטוח בעצמי.</value></data>
+  <data name="Text_138" xml:space="preserve"><value>'האבן האפלה' קוראת לך ברגע זה ממש. כשתהיה בידך תקבל כוח שלא הרגשת כמותו — אבל דע שלוחמים רבים אחרים מחפשים אותה בנואשות.</value></data>
+  <data name="Answer_138_Slot_0" xml:space="preserve"><value>אחזור עם 'האבן האפלה'.</value></data>
+  <data name="Text_139" xml:space="preserve"><value>אז מצאת את 'האבן האפלה'. כתוב שהאבן הזו היא דמו היבש של הגיבור בנלופה, שנלחם במלחמת האלים והשטן.</value></data>
+  <data name="Answer_139_Slot_0" xml:space="preserve"><value>ספר לי עוד.</value></data>
+  <data name="Text_140" xml:space="preserve"><value>בנלופה היה מגזע האבירים. אחרי תבוסתו במלחמה אימן את עצמו בקסמים ובאמנויות לחימה חדשות, והיכולות האלה הועברו בחשאי ללוחמים שדם אביר זורם בעורקיהם — כדי להילחם בכוחו האדיר של קונדון.</value></data>
+  <data name="Answer_140_Slot_0" xml:space="preserve"><value>כלומר...</value></data>
+  <data name="Text_141" xml:space="preserve"><value>כן — דם של לוחם זורם בעורקיך. לכן כוחו של בנלופה יעבור אליך דרך 'האבן האפלה'.</value></data>
+  <data name="Answer_141_Slot_0" xml:space="preserve"><value>קיבלתי כוח חדש!</value></data>
+  <data name="Text_142" xml:space="preserve"><value>קיבלת כוח חדש באמצעות 'טבעת הכבוד'. אבל יש דבר אחד שאינך יודע.</value></data>
+  <data name="Answer_142_Slot_0" xml:space="preserve"><value>מה זה?</value></data>
+  <data name="Text_143" xml:space="preserve"><value>ייתכן שתוכל לקבל כוח נוסף. האוצר האגדי 'האבן האפלה', שנחשב קדוש לצד 'טבעת הכבוד', קורא לך.</value></data>
+  <data name="Answer_143_Slot_0" xml:space="preserve"><value>קשה להאמין!</value></data>
+  <data name="Text_144" xml:space="preserve"><value>לוגארד, אל האור, מבקש ממך טובה. אבל אתה עדיין לא ראוי לה — מוטב שתחזור כשתתחזק.</value></data>
+  <data name="Answer_144_Slot_0" xml:space="preserve"><value>אחזור כשאתחזק.</value></data>
+  <data name="Text_145" xml:space="preserve"><value>לוגארד, אל האור, מבקש ממך טובה. אבל אתה עדיין לא ראוי לה — חזור אחרי שתשלים את המשימה הקודמת.</value></data>
+  <data name="Answer_145_Slot_0" xml:space="preserve"><value>אחזור אחרי שאשלים אותה.</value></data>
+  <data name="Text_146" xml:space="preserve"><value>אין לך מספיק זן. כדי לגשת למשימה הזו עליך להקריב חמישה מיליון זן ללוגארד.</value></data>
+  <data name="Answer_146_Slot_0" xml:space="preserve"><value>אחזור כשאהיה מוכן.</value></data>
+  <data name="Text_147" xml:space="preserve"><value>לוגארד, אל האור, מבקש ממך טובה.</value></data>
+  <data name="Answer_147_Slot_0" xml:space="preserve"><value>במה מדובר?</value></data>
+  <data name="Text_148" xml:space="preserve"><value>לוגארד ביקש שתאתר גיבורים שיעמדו מול האיום החדש שמטיל בלגאס על MU.</value></data>
+  <data name="Answer_148_Slot_0" xml:space="preserve"><value>אני מקשיב.</value></data>
+  <data name="Text_149" xml:space="preserve"><value>אנחנו מבינים שצבאו של בלגאס נע אל יבשת MU דרך מבצר קריוולף, אבל עדיין אין בידינו התמונה המלאה.</value></data>
+  <data name="Answer_149_Slot_0" xml:space="preserve"><value>אני מקשיב.</value></data>
+  <data name="Text_150" xml:space="preserve"><value>אנחנו מנסים בכל כוחנו להבין מדוע נתן בנו לוגארד את אמונו, אבל כוחותינו דלים מכדי לרדת לעומק הדבר.</value></data>
+  <data name="Answer_150_Slot_0" xml:space="preserve"><value>אני מקשיב.</value></data>
+  <data name="Text_151" xml:space="preserve"><value>אני מאמין שאתה מי שיכול לעזור לנו. מוכן לפעול איתנו?</value></data>
+  <data name="Answer_151_Slot_0" xml:space="preserve"><value>לשמוע שוב</value></data>
+  <data name="Answer_151_Slot_1" xml:space="preserve"><value>לקבל את המשימה</value></data>
+  <data name="Answer_151_Slot_2" xml:space="preserve"><value>לדחות את המשימה</value></data>
+  <data name="Text_152" xml:space="preserve"><value>כדי לעזור לנו תצטרך להתייצב מול צבאו של בלגאס. לפני שתתחיל, עליי לבדוק אם כוחך מספיק למשימה.</value></data>
+  <data name="Answer_152_Slot_0" xml:space="preserve"><value>אני מקשיב.</value></data>
+  <data name="Text_153" xml:space="preserve"><value>חסל את אביר קרן המוות, את הל מיין ואת עוף החול האפל — השולטים בטרקן, באיידה ובאיקרוס — והבא הוכחה אחת מכל אחד מהם.</value></data>
+  <data name="Answer_153_Slot_0" xml:space="preserve"><value>לסיים את השיחה</value></data>
+  <data name="Text_154" xml:space="preserve"><value>כל הכבוד, השלמת את המשימה. הנה משהו קטן על עמלך.</value></data>
+  <data name="Answer_154_Slot_0" xml:space="preserve"><value>אני מקשיב.</value></data>
+  <data name="Text_155" xml:space="preserve"><value>בלגאס מסוכן דיו בזכות עצמו, ומאז שחבר לארסיה מלכת הכישוף הוא הביא על העולם סכנה גדולה עוד יותר.</value></data>
+  <data name="Answer_155_Slot_0" xml:space="preserve"><value>אני מקשיב.</value></data>
+  <data name="Text_156" xml:space="preserve"><value>ההערכה שלנו היא שבלגאס מכין איום חדש על יבשת MU בעזרת צבא הכישוף האפל שלו.</value></data>
+  <data name="Answer_156_Slot_0" xml:space="preserve"><value>לסיים את השיחה</value></data>
+  <data name="Text_157" xml:space="preserve"><value>אין לך מספיק כסף. כדי לגשת למשימה הזו עליך להקריב שבעה מיליון זן ללוגארד.</value></data>
+  <data name="Answer_157_Slot_0" xml:space="preserve"><value>אחזור כשאהיה מוכן.</value></data>
+  <data name="Text_158" xml:space="preserve"><value>ברוך הבא. עכשיו אתה באמת מוכן לעזור לנו.</value></data>
+  <data name="Answer_158_Slot_0" xml:space="preserve"><value>במה אתם צריכים עזרה?</value></data>
+  <data name="Text_159" xml:space="preserve"><value>לפי המידע שבידינו הקים בלגאס מתחם שנקרא צריפי בלגאס. שנים-עשר שליחיו של לוגארד סבורים שזהו איום חדש מצידו.</value></data>
+  <data name="Answer_159_Slot_0" xml:space="preserve"><value>אני מקשיב.</value></data>
+  <data name="Text_160" xml:space="preserve"><value>כדי לבלום את התחזקות צבאו של בלגאס דרוש מידע מדויק מתוך הצריפים עצמם — וזה אומר להיכנס לשם.</value></data>
+  <data name="Answer_160_Slot_0" xml:space="preserve"><value>אני מקשיב.</value></data>
+  <data name="Text_161" xml:space="preserve"><value>למזלנו, חסותו של לוגארד סייעה לנו למצוא דרך להיכנס לצריפי בלגאס. היכנס לשם, חסל את חייליו ואסוף מידע מדויק. תביא לנו את הנתונים?</value></data>
+  <data name="Answer_161_Slot_0" xml:space="preserve"><value>לשמוע שוב</value></data>
+  <data name="Answer_161_Slot_1" xml:space="preserve"><value>לקבל את המשימה</value></data>
+  <data name="Answer_161_Slot_2" xml:space="preserve"><value>לדחות את המשימה</value></data>
+  <data name="Text_162" xml:space="preserve"><value>לך אל בית הקברות הצפוני של קריוולף ומצא שם עריק מצריפי בלגאס. ברכתו של לוגארד העניקה לאחד מהם תבונה, והוא קורא לעצמו איש זאב שומר.</value></data>
+  <data name="Answer_162_Slot_0" xml:space="preserve"><value>אני מקשיב.</value></data>
+  <data name="Text_163" xml:space="preserve"><value>הוא יוביל אותך אל צריפי בלגאס. היכנס לשם וחסל לפחות עשר מפלצות בתוך המתחם.</value></data>
+  <data name="Answer_163_Slot_0" xml:space="preserve"><value>לסיים את השיחה</value></data>
+  <data name="Text_164" xml:space="preserve"><value>השלמת את המשימה בשלום. אני מוקיר את עמלך ואת נחישותך.</value></data>
+  <data name="Answer_164_Slot_0" xml:space="preserve"><value>אני מקשיב.</value></data>
+  <data name="Text_165" xml:space="preserve"><value>המידע שהבאת והמפלצות שחיסלת תרמו רבות לשלומן של יבשת MU ושל קריוולף.</value></data>
+  <data name="Answer_165_Slot_0" xml:space="preserve"><value>לסיים את השיחה</value></data>
+  <data name="Text_166" xml:space="preserve"><value>אתה עדיין לא ראוי למשימה. גש אל מרלון, ושוב אליי כשתעמוד בכל התנאים.</value></data>
+  <data name="Answer_166_Slot_0" xml:space="preserve"><value>לסיים את השיחה</value></data>
+  <data name="Text_167" xml:space="preserve"><value>אין לך מספיק כסף. כדי לגשת למשימה הזו עליך להקריב עשרה מיליון זן ללוגארד.</value></data>
+  <data name="Answer_167_Slot_0" xml:space="preserve"><value>אחזור כשאהיה מוכן.</value></data>
+  <data name="Text_168" xml:space="preserve"><value>האומץ שגילית ביוזמתך נטע בכולנו תקווה גדולה.</value></data>
+  <data name="Answer_168_Slot_0" xml:space="preserve"><value>אני מקשיב.</value></data>
+  <data name="Text_169" xml:space="preserve"><value>בלגאס הסתתר במקום נפרד, כדי להחלים ולהשיב לעצמו את כוחו.</value></data>
+  <data name="Answer_169_Slot_0" xml:space="preserve"><value>אני מקשיב.</value></data>
+  <data name="Text_170" xml:space="preserve"><value>כדי להשלים את המשימה שהפקיד לוגארד בידינו עלינו לאתר את מקומו המדויק של בלגאס ולהשמיד את הצבא שהוא מאמן.</value></data>
+  <data name="Answer_170_Slot_0" xml:space="preserve"><value>אני מקשיב.</value></data>
+  <data name="Text_171" xml:space="preserve"><value>המשימה האחרונה בשליחותו של לוגארד כוללת מבחן קשה ועצום. עדיין מעוניין?</value></data>
+  <data name="Answer_171_Slot_0" xml:space="preserve"><value>לשמוע שוב</value></data>
+  <data name="Answer_171_Slot_1" xml:space="preserve"><value>לקבל את המשימה</value></data>
+  <data name="Answer_171_Slot_2" xml:space="preserve"><value>לדחות את המשימה</value></data>
+  <data name="Text_172" xml:space="preserve"><value>היכנס דרך השער שבקצה הצפוני של צריפי בלגאס — אנחנו נכין את המקום מראש.</value></data>
+  <data name="Answer_172_Slot_0" xml:space="preserve"><value>לסיים את השיחה</value></data>
+  <data name="Text_173" xml:space="preserve"><value>כל הכבוד — עמדת במבחן האחרון של לוגארד. מעתה תלווה אותך ברכתו לכל מקום.</value></data>
+  <data name="Answer_173_Slot_0" xml:space="preserve"><value>אני מקשיב.</value></data>
+  <data name="Text_174" xml:space="preserve"><value>עמלך נשא פרי: יבשת MU וקריוולף מוגנות מפני האיום החדש של בלגאס. אני אסיר תודה על עזרתך.</value></data>
+  <data name="Answer_174_Slot_0" xml:space="preserve"><value>לסיים את השיחה</value></data>
+</root>
