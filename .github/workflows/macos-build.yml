@@ -88,6 +88,35 @@ jobs:
           file "build-macos/src/Main" | grep -q "arm64"
           otool -L "$dylib"
 
+      - name: Fetch game assets
+        # The repository carries source only, so the engine has nothing to draw
+        # until the content is next to the executable. Pull the same archive the
+        # Mac testers download - one URL, one source of truth.
+        run: |
+          curl -fL --retry 3 -o /tmp/mu-assets.tar.gz \
+            https://play.mu-ai.online/launcher/mac/mu-mac-files.tar.gz
+          tar -xzf /tmp/mu-assets.tar.gz -C build-macos/src
+          ls build-macos/src | head
+
+      - name: Try to render a frame
+        # The engine can dump the Nth presented frame to a PPM (Winmain.cpp:193).
+        # Whether this produces anything on a CI Mac is exactly the open
+        # question: the runner may have no window server or GL context to give.
+        # Best effort on purpose - a machine that cannot draw must not turn a
+        # successful build red. Either outcome is information: a frame here means
+        # the renderer works on Apple Silicon without waiting on a human tester.
+        continue-on-error: true
+        working-directory: build-macos/src
+        run: |
+          MU_CAPTURE_FRAME=120 MU_CAPTURE_PATH=frame.ppm timeout 120 ./Main || true
+          if [ -f frame.ppm ]; then
+            echo "RENDERED A FRAME"
+            sips -s format png frame.ppm --out frame.png >/dev/null 2>&1 || true
+            ls -la frame.ppm frame.png 2>/dev/null
+          else
+            echo "no frame - the runner gave no usable GL context, or the client exited early"
+          fi
+
       - name: Upload client binary
         uses: actions/upload-artifact@v4
         with:
@@ -95,4 +124,16 @@ jobs:
           path: |
             build-macos/src/Main
             build-macos/src/MUnique.Client.Library.dylib
+
+      - name: Upload the rendered frame
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: mu-macos-frame
+          path: |
+            build-macos/src/frame.png
+            build-macos/src/frame.ppm
+            build-macos/src/MuError.log
+          if-no-files-found: ignore
           if-no-files-found: error
