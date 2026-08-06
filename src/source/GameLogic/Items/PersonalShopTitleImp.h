@@ -10,7 +10,12 @@
 
 inline POINT MakePos(long x, long y)
 {
-    POINT pos = { x, y };
+    // POINT stores LONG, which off Windows is a 32-bit int while `long` is
+    // 64-bit - so this is a narrowing conversion there, and a braced
+    // initializer makes that a hard error rather than a warning. Convert
+    // explicitly: these are screen coordinates and never approach 32 bits.
+    // The cast is a no-op on Windows, where LONG is long.
+    POINT pos = { static_cast<LONG>(x), static_cast<LONG>(y) };
     return pos;
 }
 inline SIZE MakeSize(int cx, int cy)
