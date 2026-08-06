@@ -266,8 +266,20 @@ endif()
 # assets re-trigger it. CONFIGURE_DEPENDS makes CMake re-evaluate the
 # glob at build time so newly-added asset files are picked up without a
 # manual reconfigure.
+#
+# The whole block is conditional on the directory existing. A source-only
+# checkout is a legitimate way to build this: the assets are game content, not
+# code, and a CI job that only needs to know whether the engine compiles has no
+# reason to carry ~750 MB of them. Without this guard, copy_directory fails the
+# build with "No such file or directory" after everything has already compiled,
+# which reads like a code error and is not one.
 set(ASSETS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/bin")
 message(STATUS "=== DEBUG: Assets directory: ${ASSETS_DIR}")
+if (NOT EXISTS "${ASSETS_DIR}")
+  message(STATUS "Assets directory not present - building the executable only. "
+    "The game will not run from this build directory until the contents of "
+    "src/bin are placed next to the executable.")
+else()
 file(GLOB_RECURSE ASSET_FILES CONFIGURE_DEPENDS "${ASSETS_DIR}/*")
 # $<CONFIG> in the stamp name keeps multi-config generators (Visual
 # Studio, Xcode) honest: each configuration's output directory needs
@@ -299,6 +311,7 @@ add_custom_command(TARGET Main POST_BUILD
     "-P" "${REPO_ROOT}/cmake/SeedConfigIfMissing.cmake"
   VERBATIM
 )
+endif() # assets directory present
 
 # Skeleton Linux-native linkage. This intentionally depends only on
 # ubiquitous system libraries so we can focus on getting the project to
