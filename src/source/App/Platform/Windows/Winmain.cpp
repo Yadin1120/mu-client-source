@@ -43,6 +43,7 @@
 #include "Core/Utilities/CpuUsage.h"
 
 #include "MUHelper/MuHelper.h"
+#include "Network/Server/WSclient.h"   // SocketClient, DeleteSocket - ליציאה נקייה
 #include "Camera/CameraManager.h"
 
 #include "UI/Windows/CBTMessageBox.h"
@@ -1454,6 +1455,46 @@ void UpdateResolutionDependentSystems()
     CUIMng::Instance().RepositionSceneUI();
 }
 
+// -- יציאה נקייה מהשרת --
+//
+// ⚠️ **הבאג שזה מתקן.** תפריט היציאה שבתוך המשחק שולח פקטת התנתקות
+// (SendLogOut(CloseGame)), שומר את ההגדרות והמאקרו, ועוצר את MU Helper.
+// לחיצה על ה-X של החלון **דילגה על כל זה**: הלולאה הראשית פשוט יצאה, וכל
+// מה שרץ אחריה היה פירוק גרפיקה וסאונד. החיבור מעולם לא נסגר במפורש.
+//
+// מה שהשחקן מרגיש: המשחק נסגר אבל השרת עדיין מחזיק אותו מחובר — הדמות
+// נשארת בעולם, ההתחברות הבאה נדחית ב"החשבון כבר מחובר", ומונה השחקנים
+// באתר מציג מספר שגוי. בנוסף ההגדרות והמאקרו של אותו סבב אבדו.
+//
+// כאן נעשה בדיוק מה שתפריט היציאה עושה, ובאותו סדר.
+static void CloseGameSessionCleanly()
+{
+    // ההגדרות והמאקרו נשמרים תמיד, גם אם מעולם לא התחברנו לשרת.
+    SaveOptions();
+    SaveMacro(L"Data\\Macro.txt");
+
+    if (SocketClient == nullptr || !SocketClient->IsConnected())
+    {
+        return;
+    }
+
+    // פקטת ההתנתקות שייכת לשרת המשחק. במסך הכניסה ובבחירת השרת מדברים עם
+    // שרת החיבור, שפקטה כזאת חסרת משמעות עבורו — שם מסתפקים בסגירת החיבור,
+    // שמספיקה בהחלט כדי שהצד השני יידע שהלכנו.
+    if (SceneFlag == MAIN_SCENE || SceneFlag == CHARACTER_SCENE)
+    {
+        MUHelper::g_MuHelper.TriggerStop();
+        if (auto* gameServer = SocketClient->ToGameServer())
+        {
+            gameServer->SendLogOut(LogOutType::CloseGame);
+        }
+    }
+
+    // סוגרים את החיבור מפורשות ולא משאירים את זה לסיום התהליך: כך השרת מזהה
+    // את הניתוק מיד ומשחרר את החשבון, במקום להמתין שמערכת ההפעלה תנקה.
+    DeleteSocket();
+}
+
 #ifdef _WIN32
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int nCmdShow)
 #else
@@ -1780,6 +1821,10 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int nC
 
     std::thread cpuUsageRecorder(RecordCpuUsage);
     const MSG msg = MainLoop();
+
+    // ראשון בפירוק: להיפרד מהשרת. לפני שהגרפיקה והסאונד יורדים, כדי שהשליחה
+    // לא תתחרה בסיום התהליך.
+    CloseGameSessionCleanly();
 
     // Teardown that used to run in WM_DESTROY, now after the loop exits (SDL owns
     // the window/GL context, so they must not be destroyed from a message).

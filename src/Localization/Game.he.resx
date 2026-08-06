@@ -1078,7 +1078,7 @@
   <data name="Chat window background On/Off (F5)" xml:space="preserve"><value>רקע חלון צ'אט פעיל/כבוי (F5)</value></data>
   <data name="Summoner" xml:space="preserve"><value>מכשפה</value></data>
   <data name="Bloody Summoner" xml:space="preserve"><value>מכשפת דמים</value></data>
-  <data name="Dimension Master" xml:space="preserve"><value>אמנית הממדים</value></data>
+  <data name="Dimension Master" xml:space="preserve"><value>מכשפת הממדים</value></data>
   <data name="StrongMentalityAndExcellentInsightCreates" xml:space="preserve"><value>חוסן נפשי ותובנה מצוינת יוצרים את לחש הקללה החזק ביותר. פריט זה גם שולף מזמנים מעולם אחר ומשתמש בכישוף מזיק נגדם.</value></data>
   <data name="Curse Spell increment %d%%" xml:space="preserve"><value>תוספת לחש קללה %d%%</value></data>
   <data name="Curse Spell: %d ~ %d" xml:space="preserve"><value>לחש קללה: %d ~ %d</value></data>
