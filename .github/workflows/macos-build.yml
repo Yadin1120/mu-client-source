@@ -1,0 +1,93 @@
+name: macOS Build (arm64)
+
+# Builds the native macOS client on an Apple Silicon runner: the engine, the
+# SDL3/OpenGL runtime, and the osx-arm64 Native AOT network library
+# (MUnique.Client.Library.dylib).
+#
+# Editor OFF only, unlike the Linux job. This is the build players would run,
+# and it is the first ARM build of this client in any form - keeping the matrix
+# to one configuration means a red run points at one thing.
+#
+# There is no equivalent of the Linux job's headless launch step. macOS runners
+# have no Xvfb and no software GL, so CI can prove the client builds, links and
+# loads its library - it cannot prove it draws. That verdict only comes from
+# running the artifact on a real Mac.
+
+on:
+  push:
+    # master is the branch on our snapshot repository (upstream's is main), and
+    # the snapshot is what actually reaches GitHub - the full history carries
+    # build leftovers above GitHub's 100 MB file limit. Without master here the
+    # job would never fire on the only branch we push.
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    name: build-macos (arm64)
+    # macos-26 (Apple Silicon) went generally available on 2026-02-26. Build on
+    # the same OS generation the testers actually run - macOS 26 changed enough
+    # around legacy graphics that building against an older SDK invites
+    # differences we would then have to debug through someone else's screen.
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build tools and dependencies
+        # cmake ships on the runner image; ninja, glew and jpeg-turbo do not.
+        # OpenGL and GLU come from the system framework, so nothing to install
+        # for those.
+        run: |
+          brew install ninja glew jpeg-turbo pkg-config
+
+      - name: Install .NET SDK 10
+        # Builds the osx-arm64 Native AOT client library (.dylib) and, at
+        # configure time, restores the OpenMU packet XML the wire-size codegen
+        # reads. Native AOT cannot cross-compile between operating systems, so
+        # this has to be the macOS SDK.
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Configure CMake
+        # jpeg-turbo is keg-only, so its prefix is not on the default search
+        # path and find_library would miss it.
+        run: |
+          cmake -S . -B build-macos -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DENABLE_EDITOR=OFF \
+            -DBUILD_TESTING=ON \
+            -DCMAKE_PREFIX_PATH="$(brew --prefix jpeg-turbo);$(brew --prefix glew)"
+
+      - name: Build wire-size guards
+        run: cmake --build build-macos --target GenWireSizes
+
+      - name: Build client (engine + osx-arm64 .dylib) and tests
+        run: cmake --build build-macos -j"$(sysctl -n hw.ncpu)"
+
+      - name: Run unit tests
+        run: ctest --test-dir build-macos --output-on-failure
+
+      - name: Verify the client library and executable are native arm64
+        # A silent x86_64 build would still run under Rosetta and hide the fact
+        # that the ARM port never happened, so assert the architecture.
+        run: |
+          dylib="build-macos/src/MUnique.Client.Library.dylib"
+          test -f "$dylib"
+          file "$dylib" | grep -q "arm64"
+          file "build-macos/src/Main" | grep -q "arm64"
+          otool -L "$dylib"
+
+      - name: Upload client binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: mu-client-macos-arm64
+          path: |
+            build-macos/src/Main
+            build-macos/src/MUnique.Client.Library.dylib
+          if-no-files-found: error

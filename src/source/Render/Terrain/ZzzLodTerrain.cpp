@@ -3,8 +3,9 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
-#include <GL/gl.h>
-#include <GL/glu.h>
+// No <GL/gl.h> or <GL/glu.h> here: stdafx.h already pulls in glew.h, which
+// includes the right GL and GLU headers per platform - on macOS those live in
+// the OpenGL framework (<OpenGL/glu.h>), and a GL/ path does not exist at all.
 #include <math.h>
 #include <iterator>
 #include "Render/Textures/ZzzOpenglUtil.h"

@@ -195,8 +195,8 @@ add_library(MuClient::MuClient ALIAS MuClient_whole)
 # executable shell's sources live under source/App/ (see issue #346). The entry
 # point is selected per platform (issue #441): each OS keeps its bootstrap under
 # source/App/Platform/<OS>/, so adding a platform is a new entry file plus a
-# branch here, not a CMake rewrite. Only the Windows entry point exists today;
-# the Linux/macOS sources are added when that work starts.
+# branch here, not a CMake rewrite. Windows, Linux and macOS entry points exist;
+# the mobile ones are added when that work starts.
 #
 # Unsupported platforms fail loudly rather than silently selecting the Linux
 # entry: the mobile targets need a different entry model and a renderer port
@@ -318,16 +318,47 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     ${GLEW_LIBRARY}
     ${TURBOJPEG_LIBRARY}
   )
+elseif (APPLE)
+  # macOS linkage. Deliberately close to the Linux block above, with three
+  # differences that are not optional:
+  #
+  #  - There is no -ldl and no -lpthread to link: dlopen and pthreads live in
+  #    libSystem, and asking for the Linux libraries fails the link outright.
+  #  - OpenGL is a framework, and GLU ships inside it. The engine's
+  #    fixed-function drawing is reachable because Winmain.cpp asks SDL for a
+  #    compatibility profile without naming a version, and macOS answers that
+  #    with a legacy 2.1 context - which is above what this engine uses. Asking
+  #    for any specific version above 2.1 in compatibility mode would fail here.
+  #  - GLEW and turbojpeg come from Homebrew, and jpeg-turbo is keg-only, so CI
+  #    passes both prefixes in CMAKE_PREFIX_PATH.
+  #
+  # GL_SILENCE_DEPRECATION: Apple deprecated OpenGL in 10.14 and every GL header
+  # warns on every include. It still works and still ships; the flag keeps the
+  # build log readable instead of burying real warnings.
+  find_package(OpenGL REQUIRED)
+  find_library(GLEW_LIBRARY NAMES GLEW REQUIRED)
+  find_library(TURBOJPEG_LIBRARY NAMES turbojpeg REQUIRED)
+  target_compile_definitions(MuClient PUBLIC GL_SILENCE_DEPRECATION)
+  target_link_libraries(MuClient PUBLIC
+    m
+    OpenGL::GL
+    OpenGL::GLU
+    ${GLEW_LIBRARY}
+    ${TURBOJPEG_LIBRARY}
+    "-framework Foundation"
+    "-framework Cocoa"
+  )
 endif()
 
 # --- .NET / NuGet infrastructure (shared by wire-sizes codegen and ClientLibrary)
 # Lifted up here so the wire-sizes block below can resolve the OpenMU packet
 # XML from the same NuGet cache the ClientLibrary uses.
-# A Linux target needs the native Linux dotnet to Native-AOT-compile the
-# linux-x64 .so (a Windows dotnet.exe cannot cross-OS AOT). Everything else
+# A Linux or macOS target needs that platform's own native dotnet to
+# Native-AOT-compile its shared library (a Windows dotnet.exe cannot cross-OS
+# AOT, and neither can a Linux one target macOS). Everything else
 # (Windows/MinGW targets, including from WSL) prefers dotnet.exe so the win-*
 # AOT build works. Pick accordingly.
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux" OR APPLE)
   find_program(DOTNET_EXECUTABLE dotnet)
   if (NOT DOTNET_EXECUTABLE)
     find_program(DOTNET_EXECUTABLE dotnet.exe)
@@ -540,9 +571,11 @@ if (DOTNET_EXECUTABLE)
   message(STATUS "Found .NET SDK: ${DOTNET_EXECUTABLE}")
 
   # 1. Define the output path. Native AOT emits a platform-native shared
-  # library: .dll on Windows, .so on Linux (the runtime client dlopen's it by
-  # this name).
-  if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  # library: .dll on Windows, .so on Linux, .dylib on macOS (the runtime client
+  # dlopen's it by this name - keep in sync with Dotnet/Connection.h).
+  if (APPLE)
+    set(DOTNET_LIB_NAME "MUnique.Client.Library.dylib")
+  elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(DOTNET_LIB_NAME "MUnique.Client.Library.so")
   else()
     set(DOTNET_LIB_NAME "MUnique.Client.Library.dll")
@@ -570,7 +603,27 @@ if (DOTNET_EXECUTABLE)
   # Override environment variables to avoid issues with umlauts in Windows username
   # Determine the runtime identifier from the target OS and pointer width. Native
   # AOT has no linux-x86 target, so 32-bit is Windows-only.
-  if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  if (APPLE)
+    # Apple Silicon is the target that matters; osx-x64 stays reachable so an
+    # Intel Mac can still configure. CMAKE_OSX_ARCHITECTURES wins when set,
+    # because that is what a cross/universal build actually produces.
+    if (CMAKE_OSX_ARCHITECTURES)
+      set(MU_OSX_ARCH "${CMAKE_OSX_ARCHITECTURES}")
+    else()
+      set(MU_OSX_ARCH "${CMAKE_SYSTEM_PROCESSOR}")
+    endif()
+    if (MU_OSX_ARCH MATCHES "arm64")
+      set(DOTNET_RID "osx-arm64")
+      set(DOTNET_PLATFORM "arm64")
+    else()
+      set(DOTNET_RID "osx-x64")
+      set(DOTNET_PLATFORM "x64")
+    endif()
+    # Same reason as Linux below: the PreBuild XSLT step writes Windows-style
+    # backslash paths and corrupts the generated sources off Windows.
+    set(DOTNET_EXTRA_ARGS "-p:ci=true")
+    message(STATUS ".NET Client Library will build for ${DOTNET_RID}")
+  elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(DOTNET_RID "linux-x64")
     set(DOTNET_PLATFORM "x64")
     # The PreBuild XSLT step regenerates files using Windows-style backslash

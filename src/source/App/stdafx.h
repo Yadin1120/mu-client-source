@@ -91,7 +91,14 @@
 //c runtime
 #include <stdio.h>
 #include <stdlib.h>
+// <malloc.h> is not a macOS header (it is <malloc/malloc.h> there), and this
+// include sits outside the _WIN32 block above, so leaving it unguarded fails
+// every translation unit that pulls in this precompiled header. <stdlib.h>
+// above already declares malloc/free/calloc/realloc, which is all this tree
+// uses.
+#ifndef __APPLE__
 #include <malloc.h>
+#endif
 #include <memory.h>
 #include <assert.h>
 #include <time.h>

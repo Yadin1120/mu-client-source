@@ -15,8 +15,8 @@
 #define symLoad GetProcAddress
 #else
 #include "dlfcn.h"
-#include <unistd.h>   // readlink
 #include <string>
+#include "Core/Platform/PathResolve.h"   // MuExecutableDir
 #define symLoad dlsym
 #endif
 
@@ -33,30 +33,28 @@ inline HINSTANCE get_munique_client_library_handle()
     return handle;
 }
 #else
+// Native AOT emits a platform-native shared object off Windows, and the loader
+// only finds it under that platform's own name.
+#if defined(__APPLE__)
+#define MUNIQUE_CLIENT_LIBRARY_NAME "MUnique.Client.Library.dylib"
+#else
+#define MUNIQUE_CLIENT_LIBRARY_NAME "MUnique.Client.Library.so"
+#endif
+
 inline void* get_munique_client_library_handle()
 {
-    // Native AOT emits a platform-native shared object on Linux (.so), not the
-    // Windows .dll, and the build copies it next to the executable. Resolve the
-    // executable's real directory (via /proc/self/exe) and load by absolute
-    // path, so it works regardless of the working directory the client was
+    // The build copies the shared object next to the executable, so load it by
+    // absolute path rather than trusting the working directory the client was
     // launched from; fall back to the loader search path.
     // Not const-qualified return: dlsym() takes a non-const void* handle.
     static void* const handle = []() -> void* {
-        char exe[4096];
-        const ssize_t n = ::readlink("/proc/self/exe", exe, sizeof(exe) - 1);
-        if (n > 0)
+        const std::string dir = MuExecutableDir();
+        if (!dir.empty())
         {
-            std::string path(exe, static_cast<size_t>(n));
-            const std::string::size_type slash = path.find_last_of('/');
-            if (slash != std::string::npos)
-            {
-                path.resize(slash + 1);
-                path += "MUnique.Client.Library.so";
-                if (void* h = dlopen(path.c_str(), RTLD_LAZY))
-                    return h;
-            }
+            if (void* h = dlopen((dir + MUNIQUE_CLIENT_LIBRARY_NAME).c_str(), RTLD_LAZY))
+                return h;
         }
-        return dlopen("MUnique.Client.Library.so", RTLD_LAZY);
+        return dlopen(MUNIQUE_CLIENT_LIBRARY_NAME, RTLD_LAZY);
     }();
     return handle;
 }

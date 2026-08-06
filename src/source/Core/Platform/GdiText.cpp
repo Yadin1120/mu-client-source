@@ -25,7 +25,7 @@
 #include <utility>
 #include <vector>
 
-#include <unistd.h>                    // readlink (executable path)
+#include "Core/Platform/PathResolve.h"  // MuExecutableDir
 #include "Core/Platform/WinNls.h"      // WideCharToMultiByte / CP_UTF8
 #include "Core/Platform/BundledFonts.h" // curated font list shared with Windows
 
@@ -124,19 +124,12 @@ namespace
     }
 
     // Directory of the running executable (with a trailing '/'), so bundled fonts
-    // resolve regardless of the working directory. Read via /proc/self/exe, the
-    // same way Dotnet/Connection.h locates the client library. Empty on failure.
+    // resolve regardless of the working directory - which matters most on macOS,
+    // where an app launched from Finder starts in "/". Cached: the answer cannot
+    // change while the process lives.
     const std::string& ExeDir()
     {
-        static const std::string dir = []() -> std::string {
-            char buf[4096];
-            const ssize_t n = ::readlink("/proc/self/exe", buf, sizeof(buf) - 1);
-            if (n <= 0) return {};
-            buf[n] = '\0';
-            const std::string path(buf);
-            const auto slash = path.find_last_of('/');
-            return slash == std::string::npos ? std::string() : path.substr(0, slash + 1);
-        }();
+        static const std::string dir = MuExecutableDir();
         return dir;
     }
 
@@ -191,6 +184,12 @@ namespace
                  : "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
             bold ? "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf"
                  : "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+            // macOS keeps its fonts elsewhere and has no fontconfig, so the
+            // Linux paths above all miss. The bundled ./fonts directory should
+            // already have answered by now; these are the last resort that
+            // keeps UI text on screen rather than disabling it entirely.
+            "/System/Library/Fonts/Helvetica.ttc",
+            "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
         };
         for (const char* f : fallbacks)
             candidates.emplace_back(f);

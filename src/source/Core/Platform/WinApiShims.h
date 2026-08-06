@@ -104,16 +104,17 @@ inline char* itoa(int value, char* buffer, int radix)
 inline char* _itoa(int value, char* buffer, int radix) { return itoa(value, buffer, radix); }
 
 // Path of the running executable (Win32 GetModuleFileNameW). The engine only
-// queries its own module (hModule == null), which maps to /proc/self/exe.
+// queries its own module (hModule == null), so this is the executable's own
+// path - resolved per platform by MuExecutablePath (PathResolve.h), since macOS
+// has no /proc to read.
 inline DWORD GetModuleFileNameW(HMODULE /*hModule*/, LPWSTR lpFilename, DWORD nSize)
 {
     if (!lpFilename || nSize == 0) return 0;
-    char path[4096];
-    const ssize_t n = readlink("/proc/self/exe", path, sizeof(path) - 1);
-    if (n <= 0) { lpFilename[0] = L'\0'; return 0; }
+    const std::string path = MuExecutablePath();
+    if (path.empty()) { lpFilename[0] = L'\0'; return 0; }
     // UTF-8 -> wide via the project's own converter (locale-independent, unlike
     // mbstowcs which fails on non-ASCII paths in the default "C" locale).
-    const int converted = MultiByteToWideChar(CP_UTF8, 0, path, static_cast<int>(n),
+    const int converted = MultiByteToWideChar(CP_UTF8, 0, path.c_str(), static_cast<int>(path.size()),
                                               lpFilename, static_cast<int>(nSize - 1));
     if (converted <= 0) { lpFilename[0] = L'\0'; return 0; }
     lpFilename[converted] = L'\0';
