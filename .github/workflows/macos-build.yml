@@ -26,11 +26,16 @@ on:
 jobs:
   build-macos:
     name: build-macos (arm64)
-    # macos-26 (Apple Silicon) went generally available on 2026-02-26. Build on
-    # the same OS generation the testers actually run - macOS 26 changed enough
-    # around legacy graphics that building against an older SDK invites
-    # differences we would then have to debug through someone else's screen.
-    runs-on: macos-26
+    # macos-15, not macos-26. The first attempt asked for macos-26 so the build
+    # would match the tester's OS, and GitHub cancelled the job after 15 minutes
+    # with "The job was not acquired by Runner of type hosted even after
+    # multiple attempts" - that pool is too thin to rely on. macos-15 is the
+    # established Apple Silicon image with the largest pool.
+    #
+    # Building against the older SDK is fine: a binary built on macOS 15 runs on
+    # macOS 26. The reverse - newer SDK, older OS - is what breaks, and we are
+    # not doing that.
+    runs-on: macos-15
 
     steps:
       - name: Checkout repository
