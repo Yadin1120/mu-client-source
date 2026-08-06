@@ -124,6 +124,7 @@ jobs:
           path: |
             build-macos/src/Main
             build-macos/src/MUnique.Client.Library.dylib
+          if-no-files-found: error
 
       - name: Upload the rendered frame
         if: always()
@@ -136,4 +137,3 @@ jobs:
             build-macos/src/frame.ppm
             build-macos/src/MuError.log
           if-no-files-found: ignore
-          if-no-files-found: error
