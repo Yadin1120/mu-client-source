@@ -9302,7 +9302,11 @@ void RenderCharacter(CHARACTER* c, OBJECT* o, int Select)
             RenderParts(c);
         }
     }
-    else if (o->Kind == KIND_PLAYER && o->Type == MODEL_PLAYER && o->SubType == MODEL_GM_CHARACTER)
+    // ⚠️ ‎KIND_NPC‎ נוסף כאן ב-06/08/2026. מפלצת 378 (הגיים מאסטר) מסווגת
+    // בכוונה כ-NPC ב-‎IsForcedNpcMonsterType‎ כדי שתהיה לחיצה ושם מעליה —
+    // אבל שני מסלולי הציור של הגוף דרשו ‎KIND_PLAYER‎, ולכן השם רחף באוויר
+    // בלי דמות מתחתיו. נראה לשחקן כמו באג גרפי.
+    else if ((o->Kind == KIND_PLAYER || o->Kind == KIND_NPC) && o->Type == MODEL_PLAYER && o->SubType == MODEL_GM_CHARACTER)
     {
         RenderPartObject(&c->Object, o->SubType, NULL, c->Light, o->Alpha, 0, 0, 0, false, false, Translate, Select);
 

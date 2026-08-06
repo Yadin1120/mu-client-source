@@ -8639,7 +8639,11 @@ void RenderPartObjectBody(BMD* b, OBJECT* o, int Type, float Alpha, int RenderTy
         b->RenderMesh(1, RENDER_TEXTURE, o->Alpha, 1, fLumi, o->BlendMeshTexCoordU, o->BlendMeshTexCoordV, BITMAP_BLOOD + 1);
         b->RenderMesh(1, RENDER_TEXTURE, o->Alpha, 1, fLumi, o->BlendMeshTexCoordU, o->BlendMeshTexCoordV, BITMAP_BLOOD + 1);
     }
-    else if (o->Kind == KIND_PLAYER && o->Type == MODEL_PLAYER && o->SubType == MODEL_GM_CHARACTER)
+    // ⚠️ ‎KIND_NPC‎ נוסף כאן ב-06/08/2026. מפלצת 378 (הגיים מאסטר) מסווגת
+    // בכוונה כ-NPC ב-‎IsForcedNpcMonsterType‎ כדי שתהיה לחיצה ושם מעליה —
+    // אבל שני מסלולי הציור של הגוף דרשו ‎KIND_PLAYER‎, ולכן השם רחף באוויר
+    // בלי דמות מתחתיו. נראה לשחקן כמו באג גרפי.
+    else if ((o->Kind == KIND_PLAYER || o->Kind == KIND_NPC) && o->Type == MODEL_PLAYER && o->SubType == MODEL_GM_CHARACTER)
     {
         o->HiddenMesh = 2;
         b->RenderBody(RENDER_TEXTURE, o->Alpha, o->BlendMesh, o->BlendMeshLight, o->BlendMeshTexCoordU, o->BlendMeshTexCoordV, o->HiddenMesh);
