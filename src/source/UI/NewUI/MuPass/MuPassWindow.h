@@ -115,6 +115,18 @@ namespace SEASON3B
 
         PendingItemIcon m_pendingItems[TRACK_VISIBLE_ROWS * 2];
         int m_pendingItemCount;
+
+        // The reward the mouse is over this frame, if any. Collected while the track is
+        // drawn and rendered as a normal item tooltip at the very end of Render(), so it
+        // draws above the 3D reward icons.
+        void RenderRewardToolTip();
+
+        bool m_bHoveredReward;
+        bool m_bHoveredHasItem;         // false for credits / random excellent - those get a text box
+        int m_iHoveredTipX;
+        int m_iHoveredTipY;
+        unsigned char m_HoveredItemData[GameLogic::MuPass::REWARD_ITEM_DATA_BYTES];
+        wchar_t m_szHoveredLabel[GameLogic::MuPass::REWARD_LABEL_LEN];
     };
 }
 

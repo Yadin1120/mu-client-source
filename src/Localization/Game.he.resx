@@ -431,6 +431,8 @@
   <data name="Reflect Damage +5%%" xml:space="preserve"><value>החזרת נזק +5%%</value></data>
   <data name="Defense success rate +10%%" xml:space="preserve"><value>סיכוי הצלחת הגנה +10%%</value></data>
   <data name="Increases acquisition rate of Zen after hunting monsters +30%%" xml:space="preserve"><value>מגביר קבלת זן מהריגת מפלצות +30%%</value></data>
+  <data name="Increases acquisition rate of Life after hunting monsters +life/8" xml:space="preserve"><value>מגביר קבלת חיים מהריגת מפלצות +חיים/8</value></data>
+  <data name="Increases acquisition rate of Mana after hunting monsters +Mana/8" xml:space="preserve"><value>מגביר קבלת מאנה מהריגת מפלצות +מאנה/8</value></data>
   <data name="Excellent Damage rate +10%%" xml:space="preserve"><value>דיוק נזק מצוין +10%%</value></data>
   <data name="Increase Damage +level/20" xml:space="preserve"><value>הגבר נזק +רמה/20</value></data>
   <data name="Increase Damage +%d%%" xml:space="preserve"><value>הגבר נזק +%d%%</value></data>

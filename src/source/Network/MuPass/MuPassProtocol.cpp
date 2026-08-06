@@ -76,6 +76,10 @@ namespace Network::MuPass
             BYTE Padding;
             char FreeLabel[REWARD_LABEL_BYTES];
             char ProLabel[REWARD_LABEL_BYTES];
+
+            // Appended after the labels, so the offsets above stay as they were.
+            BYTE FreeItemData[GameLogic::MuPass::REWARD_ITEM_DATA_BYTES];
+            BYTE ProItemData[GameLogic::MuPass::REWARD_ITEM_DATA_BYTES];
         };
 #pragma pack(pop)
 
@@ -86,7 +90,8 @@ namespace Network::MuPass
             BYTE byAmount,
             BYTE byItemLevel,
             BYTE byState,
-            const char* szLabelUtf8)
+            const char* szLabelUtf8,
+            const BYTE* pItemData)
         {
             using GameLogic::MuPass::RewardState;
 
@@ -98,6 +103,11 @@ namespace Network::MuPass
                 : (byGroup * MAX_ITEM_INDEX) + wNumber;
             CMultiLanguage::ConvertFromUtf8(reward.szLabel, szLabelUtf8, REWARD_LABEL_BYTES);
             reward.szLabel[GameLogic::MuPass::REWARD_LABEL_LEN - 1] = L'\0';
+
+            // The server leaves the field all-zero when the reward is not a concrete item
+            // (credits, random excellent); a zero group and number can never be a real item.
+            memcpy(reward.ItemData, pItemData, GameLogic::MuPass::REWARD_ITEM_DATA_BYTES);
+            reward.bHasItemData = (pItemData[0] != 0) || (pItemData[1] != 0);
         }
     }
 
@@ -162,8 +172,8 @@ namespace Network::MuPass
             const RewardLevelEntry& entry = pEntries[i];
             GameLogic::MuPass::TrackLevel level{};
             level.iLevel = entry.Level;
-            ParseTrackReward(level.Free, entry.FreeGroup, entry.FreeNumber, entry.FreeAmount, entry.FreeItemLevel, entry.FreeState, entry.FreeLabel);
-            ParseTrackReward(level.Pro, entry.ProGroup, entry.ProNumber, entry.ProAmount, entry.ProItemLevel, entry.ProState, entry.ProLabel);
+            ParseTrackReward(level.Free, entry.FreeGroup, entry.FreeNumber, entry.FreeAmount, entry.FreeItemLevel, entry.FreeState, entry.FreeLabel, entry.FreeItemData);
+            ParseTrackReward(level.Pro, entry.ProGroup, entry.ProNumber, entry.ProAmount, entry.ProItemLevel, entry.ProState, entry.ProLabel, entry.ProItemData);
             state.Track.push_back(level);
         }
     }

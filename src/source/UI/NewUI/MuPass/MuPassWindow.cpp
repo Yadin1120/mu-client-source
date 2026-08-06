@@ -8,6 +8,7 @@
 #include "UI/Legacy/UIControls.h"
 #include "Render/Textures/ZzzOpenglUtil.h"
 #include "Engine/Object/ZzzInventory.h"
+#include "UI/NewUI/Inventory/NewUIItemMng.h"
 #include "Network/MuPass/MuPassProtocol.h"
 #include "Audio/DSPlaySound.h"
 #include "App/Platform/Windows/Winmain.h"
@@ -103,6 +104,12 @@ SEASON3B::CMuPassWindow::CMuPassWindow()
     , m_dwProConfirmTick(0)
     , m_pendingItems{}
     , m_pendingItemCount(0)
+    , m_bHoveredReward(false)
+    , m_bHoveredHasItem(false)
+    , m_iHoveredTipX(0)
+    , m_iHoveredTipY(0)
+    , m_HoveredItemData{}
+    , m_szHoveredLabel{}
 {
 }
 
@@ -385,6 +392,7 @@ bool SEASON3B::CMuPassWindow::Render()
     EnableAlphaTest();
 
     m_pendingItemCount = 0;
+    m_bHoveredReward = false;
     RenderFrame();
     RenderHeader();
     RenderPointsMeter();
@@ -397,6 +405,10 @@ bool SEASON3B::CMuPassWindow::Render()
 
     // Re-establish 2D blending for any overlay drawn on top of the items.
     EnableAlphaTest();
+
+    // After the 3D icon pass, so the tooltip box draws above the reward icons.
+    RenderRewardToolTip();
+
     if (m_bInfoOverlayVisible)
     {
         RenderInfoOverlay();
@@ -752,6 +764,20 @@ void SEASON3B::CMuPassWindow::RenderTrackSlot(const GameLogic::MuPass::TrackRewa
     if (reward.iItemType >= 0)
     {
         QueueItemIcon(iSlotX + 1, iSlotY + 1, reward.iItemType, reward.iItemLevel);
+
+        // Remember what the mouse is over; the tooltip itself is drawn at the end of
+        // Render(), because it must sit above the 3D icon pass. Rewards without a concrete
+        // item (credits, random excellent) get a plain text box instead of an item tooltip -
+        // without it the icon alone never says what the reward actually is.
+        if (CheckMouseIn(iSlotX, iSlotY, TRACK_SLOT_SIZE, TRACK_SLOT_SIZE))
+        {
+            m_bHoveredReward = true;
+            m_bHoveredHasItem = reward.bHasItemData;
+            m_iHoveredTipX = iSlotX + (TRACK_SLOT_SIZE / 2);
+            m_iHoveredTipY = iSlotY;
+            memcpy(m_HoveredItemData, reward.ItemData, GameLogic::MuPass::REWARD_ITEM_DATA_BYTES);
+            wcscpy_s(m_szHoveredLabel, reward.szLabel);
+        }
     }
 
     if (bCollected)
@@ -771,6 +797,66 @@ void SEASON3B::CMuPassWindow::RenderTrackSlot(const GameLogic::MuPass::TrackRewa
         SetTextIvory();
         g_pRenderText->RenderText(iSlotX + 2, iSlotY + TRACK_SLOT_SIZE - 12, szAmount, TRACK_SLOT_SIZE - 4, 0, RT3_SORT_LEFT);
     }
+}
+
+void SEASON3B::CMuPassWindow::RenderRewardToolTip()
+{
+    if (!m_bHoveredReward)
+    {
+        return;
+    }
+
+    if (!m_bHoveredHasItem)
+    {
+        // Credits and random-excellent rewards have no item to build, so all we can show is
+        // what the reward is - which is exactly what was missing: the icon alone never said
+        // "credits". Drawn in the same style as the info overlay.
+        if (m_szHoveredLabel[0] == L'\0')
+        {
+            return;
+        }
+
+        const int iTextWidth = 150;
+        const int iBoxHeight = 22;
+        int iBoxX = m_iHoveredTipX - (iTextWidth / 2);
+        int iBoxY = m_iHoveredTipY - iBoxHeight - 4;
+
+        // Keep the box inside the 640x480 UI space, so a reward at the edge stays readable.
+        if (iBoxX < 2) { iBoxX = 2; }
+        if (iBoxX + iTextWidth > 638) { iBoxX = 638 - iTextWidth; }
+        if (iBoxY < 2) { iBoxY = m_iHoveredTipY + TRACK_SLOT_SIZE + 4; }
+
+        FillRect(iBoxX, iBoxY, iTextWidth, iBoxHeight, COL_PANEL, 0.97f);
+        OutlineRect(iBoxX, iBoxY, iTextWidth, iBoxHeight, COL_GOLD);
+        g_pRenderText->SetFont(g_hFontBold);
+        SetTextGold();
+        g_pRenderText->RenderText(iBoxX, iBoxY + 4, m_szHoveredLabel, iTextWidth, 0, RT3_SORT_CENTER);
+        g_pRenderText->SetFont(g_hFont);
+        return;
+    }
+
+    // The reward arrives serialized in the same format as every other item, so the normal
+    // parser builds it and the normal tooltip renders it - excellent options, luck, skill,
+    // the additional option and the requirements all come out exactly as on a real item.
+    ItemCreationParams params = ParseItemData(
+        std::span<const BYTE>(m_HoveredItemData, GameLogic::MuPass::REWARD_ITEM_DATA_BYTES));
+
+    ITEM* pItem = g_pNewItemMng->CreateItemByParameters(&params);
+    if (pItem == nullptr)
+    {
+        return;
+    }
+
+    // Pets take a different tooltip path which asks the server for the pet's level and
+    // experience - and a reward that is not in any inventory has nothing to ask about.
+    if (pItem->Type != ITEM_DARK_HORSE_ITEM && pItem->Type != ITEM_DARK_RAVEN_ITEM)
+    {
+        ::RenderItemInfo(m_iHoveredTipX, m_iHoveredTipY, pItem, false, 0, true);
+    }
+
+    // Built and released per frame: the tooltip needs it only while it is drawn, and
+    // keeping it alive would mean tracking when the hovered reward changes.
+    g_pNewItemMng->DeleteItem(pItem);
 }
 
 void SEASON3B::CMuPassWindow::QueueItemIcon(int iSlotX, int iSlotY, int iItemType, int iItemLevel)

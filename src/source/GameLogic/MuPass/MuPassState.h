@@ -17,6 +17,12 @@ namespace GameLogic::MuPass
     inline constexpr int MISSION_TEXT_LEN = 96;
     inline constexpr int REWARD_LABEL_LEN = 48;
 
+    // The reward item, serialized by the server in the very same format every other item
+    // arrives in, so the reward track can build a real ITEM and show the normal item
+    // tooltip for it. Raw bytes, so unlike the text fields above there is no conversion
+    // involved and no buffer to overrun. All-zero means "not a concrete item".
+    inline constexpr int REWARD_ITEM_DATA_BYTES = 15;
+
     enum class RewardState : unsigned char
     {
         Locked = 0,
@@ -43,6 +49,11 @@ namespace GameLogic::MuPass
         int iAmount;
         RewardState eState;
         wchar_t szLabel[REWARD_LABEL_LEN];
+
+        // Serialized reward item; bHasItemData is false for credits and random-excellent
+        // rewards, which have no concrete item to show a tooltip for.
+        bool bHasItemData;
+        unsigned char ItemData[REWARD_ITEM_DATA_BYTES];
     };
 
     struct TrackLevel
