@@ -21,12 +21,13 @@
 
 namespace
 {
-std::wstring BuildFtpUrl(const std::wstring& host, unsigned short port, const std::wstring& remotePath)
+std::wstring BuildDownloadUrl(DownloaderType type, const std::wstring& host, unsigned short port,
+                              const std::wstring& remotePath)
 {
     // WinINet's FtpOpenFile treated the remote path as relative to the login
-    // directory; libcurl's ftp://host/path does the same with a single leading
-    // slash. Normalise separators and drop any leading slash so exactly one
-    // sits between the host and the path.
+    // directory; libcurl's scheme://host/path does the same with a single
+    // leading slash. Normalise separators and drop any leading slash so
+    // exactly one sits between the host and the path.
     std::wstring path = remotePath;
     for (wchar_t& ch : path)
     {
@@ -40,7 +41,18 @@ std::wstring BuildFtpUrl(const std::wstring& host, unsigned short port, const st
         path.erase(path.begin());
     }
 
-    return L"ftp://" + host + L":" + std::to_wstring(port) + L"/" + path;
+    // The scheme must follow the requested downloader type - this used to be
+    // hardcoded to ftp://, so the HTTP catalog download (the only kind the
+    // shop performs since it moved off image.webzen.com) quietly spoke FTP at
+    // an HTTP server and failed on every non-Windows client. Port 443 means
+    // the server side terminates TLS, so honour it as https rather than
+    // sending cleartext HTTP to an https port.
+    std::wstring scheme = L"ftp";
+    if (type == HTTP)
+    {
+        scheme = (port == 443) ? L"https" : L"http";
+    }
+    return scheme + L"://" + host + L":" + std::to_wstring(port) + L"/" + path;
 }
 } // namespace
 #endif // _WIN32
@@ -87,7 +99,7 @@ WZResult CFTPFileDownLoader::DownLoadFiles(DownloaderType type,
     for (std::vector<std::wstring>::iterator it = vScriptFiles.begin(); it != vScriptFiles.end(); ++it)
     {
         const std::wstring localPath = localBase + (*it);
-        const std::wstring url = BuildFtpUrl(strServerIP, PortNum, remoteBase + (*it));
+        const std::wstring url = BuildDownloadUrl(type, strServerIP, PortNum, remoteBase + (*it));
 
         result = CurlFileDownloader::DownloadFile(url, localPath, strUserName, strPWD, bPassiveMode, &this->m_Break);
 
