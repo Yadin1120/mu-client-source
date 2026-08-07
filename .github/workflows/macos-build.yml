@@ -85,6 +85,31 @@ jobs:
       - name: Run unit tests
         run: ctest --test-dir build-macos --output-on-failure
 
+      - name: Bundle runtime dylibs and re-sign
+        # The build machine resolves turbojpeg from Homebrew; a player's Mac
+        # has no Homebrew, so the raw binary would die in dyld before the first
+        # frame. Ship the dylib next to the executable and point the load
+        # command at @loader_path. install_name_tool invalidates the linker's
+        # ad-hoc signature, and an invalidly-signed arm64 binary is killed on
+        # launch - re-sign, ad hoc, as the final touch.
+        working-directory: build-macos/src
+        run: |
+          TJ=$(otool -L Main | awk '/turbojpeg/{print $1; exit}')
+          echo "turbojpeg resolved at build time: $TJ"
+          cp "$TJ" .
+          TJB=$(basename "$TJ")
+          install_name_tool -change "$TJ" "@loader_path/$TJB" Main
+          codesign -s - -f Main
+          echo "--- load commands after fixup ---"
+          otool -L Main
+          # Fail loudly if anything still points into Homebrew.
+          if otool -L Main | grep -q /opt/homebrew; then
+            echo "Main still depends on Homebrew paths"; exit 1
+          fi
+          if otool -L MUnique.Client.Library.dylib | grep -q /opt/homebrew; then
+            echo "client library depends on Homebrew paths"; exit 1
+          fi
+
       - name: Verify the client library and executable are native arm64
         # A silent x86_64 build would still run under Rosetta and hide the fact
         # that the ARM port never happened, so assert the architecture.
@@ -138,6 +163,7 @@ jobs:
           path: |
             build-macos/src/Main
             build-macos/src/MUnique.Client.Library.dylib
+            build-macos/src/libturbojpeg*.dylib
           if-no-files-found: error
 
       - name: Upload the rendered frame

@@ -358,7 +358,13 @@ elseif (APPLE)
   # warns on every include. It still works and still ships; the flag keeps the
   # build log readable instead of burying real warnings.
   find_package(OpenGL REQUIRED)
-  find_library(GLEW_LIBRARY NAMES GLEW REQUIRED)
+  # No GLEW on macOS, on purpose: the engine never calls glewInit() and uses
+  # only GL 1.0/1.1 entry points, which are direct exports of OpenGL.framework.
+  # The vendored glew.h still provides the declarations at compile time; the
+  # dylib itself would only be one more Homebrew dependency to bundle for a
+  # player machine that has no Homebrew. If a link error ever lands here
+  # (undefined __glew*), someone started using a post-1.1 entry point - bundle
+  # GLEW then, alongside turbojpeg below.
   find_library(TURBOJPEG_LIBRARY NAMES turbojpeg REQUIRED)
   target_compile_definitions(MuClient PUBLIC GL_SILENCE_DEPRECATION)
   # The tree is full of `POINT p = { (long)x, ... }` initializers, upstream
@@ -373,7 +379,6 @@ elseif (APPLE)
     m
     OpenGL::GL
     OpenGL::GLU
-    ${GLEW_LIBRARY}
     ${TURBOJPEG_LIBRARY}
     "-framework Foundation"
     "-framework Cocoa"
