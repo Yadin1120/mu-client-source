@@ -2589,8 +2589,10 @@ DWORD CUIRenderText::GetTextColor() const
 }
 DWORD CUIRenderText::GetBgColor() const
 {
+    // The delegate's result was computed and thrown away, so this always
+    // reported black regardless of the real background colour.
     if (m_pRenderText)
-        m_pRenderText->GetBgColor();
+        return m_pRenderText->GetBgColor();
     return 0;
 }
 
@@ -2878,6 +2880,14 @@ void DrawTextDirectional(HDC hdc, int iPos_x, int iPos_y, const wchar_t* pszText
         ::ExtTextOutW(hdc, iPos_x, iPos_y, ETO_RTLREADING, nullptr, pszText, iLength, nullptr);
         return;
     }
+#else
+    // Off Windows there is no GDI bidi pass, so the reordering has to happen
+    // here. RenderText does it for the text it draws, but callers that reach
+    // DrawTextDirectional directly - ground-item drop labels
+    // (ZzzInventory.cpp) among them - bypassed that and rendered Hebrew
+    // backwards.
+    wchar_t bidiBuffer[1024];
+    pszText = ApplyHebrewBidi(pszText, bidiBuffer, std::size(bidiBuffer));
 #endif
 
     TextOut(hdc, iPos_x, iPos_y, pszText, iLength);
@@ -2890,12 +2900,9 @@ void CUIRenderTextOriginal::RenderText(int iPos_x, int iPos_y, const wchar_t* ps
     if (pszText == nullptr || (pszText[0] == '\0' && iBoxWidth == 0)) return;
     if (wcslen(pszText) <= 0 && iBoxWidth == 0) return;
 
-#ifndef _WIN32
-    // Manual bidi is only needed on Linux, where the custom font path has no shaping.
-    // Windows GDI applies Hebrew RTL reordering itself, so reversing here would double-flip.
-    wchar_t s_bidiBuf[1024];
-    pszText = ApplyHebrewBidi(pszText, s_bidiBuf, 1024);
-#endif
+    // The bidi pass now lives in DrawTextDirectional, which this function ends
+    // up calling and which other callers (ground-item labels) reach directly.
+    // Reversing here as well would flip the text back.
 
     SIZE RealTextSize;
 

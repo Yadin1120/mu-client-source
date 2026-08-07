@@ -75,14 +75,23 @@ void			CListManager::SetListManagerInfo(DownloaderType type,
     if (GetFileAttributes(LocalPath) == INVALID_FILE_ATTRIBUTES)
         CreateDirectory(LocalPath, 0);
 
-    if (this->m_ListManagerInfo.m_strLocalPath.substr(this->m_ListManagerInfo.m_strLocalPath.size(), 1) != L"\\")
+    // back(), not substr(size(), 1): substr at pos == size() is legal and
+    // returns an empty string, which never equals the separator - so both
+    // branches always ran and a path already ending in a separator got a
+    // second one. Harmless with the values shipped today, but "/shop/" in
+    // shop.ini would have produced "//shop//" in every catalog URL.
     {
-        this->m_ListManagerInfo.m_strLocalPath += L"\\";
-    }
+        std::wstring& local = this->m_ListManagerInfo.m_strLocalPath;
+        if (local.empty() || (local.back() != L'\\' && local.back() != L'/'))
+        {
+            local += L"\\";
+        }
 
-    if (this->m_ListManagerInfo.m_strRemotePath.substr(this->m_ListManagerInfo.m_strRemotePath.size(), 1) != L"/")
-    {
-        this->m_ListManagerInfo.m_strRemotePath += L"/";
+        std::wstring& remote = this->m_ListManagerInfo.m_strRemotePath;
+        if (remote.empty() || remote.back() != L'/')
+        {
+            remote += L"/";
+        }
     }
 }
 

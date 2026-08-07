@@ -61,6 +61,7 @@ void WZResult::SetResult(DWORD dwErrorCode, DWORD dwWindowErrorCode, const TCHAR
     this->m_dwErrorCode = dwErrorCode;
     this->m_dwWindowErrorCode = dwWindowErrorCode;
     StringCchVPrintf(this->m_szErrorMessage, std::size(this->m_szErrorMessage), szFormat, va);
+    va_end(va);
 }
 
 void WZResult::SetSuccessResult() // OK
@@ -89,8 +90,13 @@ WZResult WZResult::BuildResult(DWORD dwErrorCode, DWORD dwWindowErrorCode, const
 
     memset(Buffer, 0, sizeof(Buffer));
     StringCchVPrintf(Buffer, std::size(Buffer), szFormat, args);
+    va_end(args);
 
-    result.SetResult(dwErrorCode, dwWindowErrorCode, Buffer);
+    // L"%ls", not Buffer-as-format: the buffer already holds the finished
+    // message, and passing it as a format string re-interprets any surviving
+    // '%' with no arguments behind it. A URL with a percent-escape was enough
+    // to crash here, since %s in a wide format means char* on POSIX.
+    result.SetResult(dwErrorCode, dwWindowErrorCode, L"%ls", Buffer);
 
     return result;
 }

@@ -234,6 +234,71 @@ namespace
         return nullptr;
     }
 
+    // Faces consulted when the chosen font has no glyph for a codepoint. The
+    // bundled DejaVu/Liberation cover Latin and Hebrew but no CJK at all, and
+    // stbtt resolves a missing codepoint to glyph 0 - whose .notdef in DejaVu
+    // is a hollow rectangle. That is where the row of boxes in the in-game
+    // chat came from: the server sends its stock notice in Korean, and every
+    // character of it landed on .notdef. One fallback face fixes the whole
+    // class, for any script, rather than chasing individual messages.
+    const MuGdiFace* FallbackFaceFor(int codepoint)
+    {
+        if (codepoint < 0x0100) return nullptr;   // Latin is always covered
+
+        static const char* const kFallbackPaths[] = {
+            "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",  // macOS: near-full BMP
+            "/System/Library/Fonts/STHeiti Light.ttc",               // macOS: CJK
+            "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        };
+
+        static std::vector<MuGdiFace> s_faces = []() {
+            std::vector<MuGdiFace> loaded;
+            for (const char* path : kFallbackPaths)
+            {
+                FILE* fp = std::fopen(path, "rb");
+                if (!fp) continue;
+                std::fseek(fp, 0, SEEK_END);
+                const long size = std::ftell(fp);
+                std::fseek(fp, 0, SEEK_SET);
+                MuGdiFace face;
+                if (size > 0)
+                {
+                    face.data.resize(static_cast<size_t>(size));
+                    if (std::fread(face.data.data(), 1, face.data.size(), fp) == face.data.size() &&
+                        stbtt_InitFont(&face.info, face.data.data(),
+                                       stbtt_GetFontOffsetForIndex(face.data.data(), 0)))
+                    {
+                        face.valid = true;
+                    }
+                }
+                std::fclose(fp);
+                if (face.valid) loaded.push_back(std::move(face));
+            }
+            return loaded;
+        }();
+
+        for (const MuGdiFace& face : s_faces)
+        {
+            if (stbtt_FindGlyphIndex(&face.info, codepoint) != 0)
+                return &face;
+        }
+        return nullptr;
+    }
+
+    // The face that should actually draw this codepoint: the requested one when
+    // it has the glyph, otherwise a fallback. Measurement and rasterisation both
+    // go through here so the pen advance matches what gets drawn.
+    const stbtt_fontinfo* FaceForCodepoint(const MuGdiFont* font, int codepoint)
+    {
+        const stbtt_fontinfo* info = &font->face->info;
+        if (stbtt_FindGlyphIndex(info, codepoint) != 0)
+            return info;
+        if (const MuGdiFace* fallback = FallbackFaceFor(codepoint))
+            return &fallback->info;
+        return info;
+    }
+
     // Width of `text` in pixels at the font's scale, accumulating advances the
     // way TextOut steps the pen so measurement and rendering agree.
     int MeasureWidth(const MuGdiFont* font, LPCWSTR text, int len)
@@ -241,8 +306,9 @@ namespace
         float pen = 0.0f;
         for (int i = 0; i < len; ++i)
         {
+            const stbtt_fontinfo* info = FaceForCodepoint(font, static_cast<int>(text[i]));
             int advance = 0, lsb = 0;
-            stbtt_GetCodepointHMetrics(&font->face->info, static_cast<int>(text[i]), &advance, &lsb);
+            stbtt_GetCodepointHMetrics(info, static_cast<int>(text[i]), &advance, &lsb);
             pen += advance * font->scale;
         }
         return static_cast<int>(std::ceil(pen));
@@ -454,18 +520,21 @@ BOOL TextOut(HDC hdc, int x, int y, LPCWSTR lpString, int c)
     for (int i = 0; i < len; ++i)
     {
         const int cp = static_cast<int>(lpString[i]);
+        // Per glyph, not per string: a Hebrew line with one CJK word should
+        // draw both, each from whichever face actually has the glyph.
+        const stbtt_fontinfo* glyphInfo = FaceForCodepoint(font, cp);
         int advance = 0, lsb = 0;
-        stbtt_GetCodepointHMetrics(info, cp, &advance, &lsb);
+        stbtt_GetCodepointHMetrics(glyphInfo, cp, &advance, &lsb);
 
         const float xShift = pen - std::floor(pen);
         int gx1, gy1, gx2, gy2;
-        stbtt_GetCodepointBitmapBoxSubpixel(info, cp, font->scale, font->scale, xShift, 0.0f,
+        stbtt_GetCodepointBitmapBoxSubpixel(glyphInfo, cp, font->scale, font->scale, xShift, 0.0f,
                                             &gx1, &gy1, &gx2, &gy2);
         const int gw = gx2 - gx1, gh = gy2 - gy1;
         if (gw > 0 && gh > 0)
         {
             coverage.assign(static_cast<size_t>(gw) * gh, 0);
-            stbtt_MakeCodepointBitmapSubpixel(info, coverage.data(), gw, gh, gw,
+            stbtt_MakeCodepointBitmapSubpixel(glyphInfo, coverage.data(), gw, gh, gw,
                                               font->scale, font->scale, xShift, 0.0f, cp);
 
             const int originX = static_cast<int>(std::floor(pen)) + gx1;
