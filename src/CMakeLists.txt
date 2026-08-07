@@ -211,7 +211,11 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "iOS")
     "Store restricted. When that work starts, add source/App/Platform/iOS/ "
     "and replace this branch.")
 elseif (APPLE)
-  set(MU_APP_ENTRY "source/App/Platform/macOS/main.mm")
+  # Plain C++ like the Linux entry - see the comment in main.cpp for why this
+  # must not be Objective-C++.
+  set(MU_APP_ENTRY
+    "source/App/Platform/macOS/main.cpp"
+    "source/App/Platform/Windows/Winmain.cpp")
 elseif (ANDROID)
   message(FATAL_ERROR "Android is not a supported build target yet: it needs "
     "an OpenGL ES renderer port, and its entry point is android_main via "
