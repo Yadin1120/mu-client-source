@@ -184,14 +184,35 @@ jobs:
           DIR="$HOME/Library/Application Support/MU-AI"
           APPDIR="$(cd "$(dirname "$0")" && pwd)"
           mkdir -p "$DIR"
-          if [ ! -d "$DIR/Data" ]; then
+
+          # Content updates: the server publishes a version stamp next to the
+          # asset archive, bumped by the publish pipeline whenever client
+          # content changes. A mismatch (or a fresh install - no local stamp)
+          # re-downloads the archive, so Mac players track content updates the
+          # way Windows players do through the launcher. The player's own
+          # config.ini is never overwritten on an update, only seeded on first
+          # install. If the stamp check itself fails (offline), an existing
+          # install still launches - the game itself is the judge of whether
+          # the server will have it.
+          REMOTE_VER="$(curl -fsS --max-time 10 "$BASE/assets-version.txt" 2>/dev/null || true)"
+          LOCAL_VER="$(cat "$DIR/.assets-version" 2>/dev/null || true)"
+          if [ ! -d "$DIR/Data" ] || { [ -n "$REMOTE_VER" ] && [ "$REMOTE_VER" != "$LOCAL_VER" ]; }; then
             osascript -e 'display notification "מוריד את קבצי המשחק (~560MB). המשחק ייפתח לבד כשההורדה תסתיים." with title "MU AI"' >/dev/null 2>&1 || true
             if ! curl -fL -C - -o "$DIR/mu-files.tar.gz" "$BASE/mu-mac-files-lite.tar.gz"; then
-              osascript -e 'display dialog "ההורדה נכשלה — בדקו את חיבור האינטרנט ונסו שוב." with title "MU AI" buttons {"סגור"} default button 1' >/dev/null 2>&1 || true
-              exit 1
+              if [ -d "$DIR/Data" ]; then
+                rm -f "$DIR/mu-files.tar.gz"
+              else
+                osascript -e 'display dialog "ההורדה נכשלה — בדקו את חיבור האינטרנט ונסו שוב." with title "MU AI" buttons {"סגור"} default button 1' >/dev/null 2>&1 || true
+                exit 1
+              fi
+            else
+              KEEP_CONFIG=""
+              [ -f "$DIR/config.ini" ] && KEEP_CONFIG="--exclude=config.ini"
+              tar -xzf "$DIR/mu-files.tar.gz" -C "$DIR" $KEEP_CONFIG && rm -f "$DIR/mu-files.tar.gz"
+              [ -n "$REMOTE_VER" ] && printf '%s' "$REMOTE_VER" > "$DIR/.assets-version"
             fi
-            tar -xzf "$DIR/mu-files.tar.gz" -C "$DIR" && rm -f "$DIR/mu-files.tar.gz"
           fi
+
           for f in Main MUnique.Client.Library.dylib libturbojpeg.0.dylib; do
             cp -f "$APPDIR/$f" "$DIR/"
           done
