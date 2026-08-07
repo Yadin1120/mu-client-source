@@ -35,6 +35,7 @@ FrameTimingState g_frameTiming;
 #include "UI/Legacy/UIMng.h"
 #include "Network/Server/WSclient.h"
 #include "Network/Reconnect/ReconnectManager.h"
+#include "GameLogic/AutoTest/AutoTestController.h"
 #include "UI/NewUI/Dialogs/ReconnectDialog.h"
 #include "GameLogic/Events/w_CursedTemple.h"
 #include "Network/Server/ServerListManager.h"
@@ -1053,6 +1054,11 @@ void RenderScene(HDC hDC)
     // runs across all scenes because reconnect passes through the login,
     // character and loading scenes on its way back into the game.
     ReconnectManager::Instance().Update();
+
+    // Same slot, same reason, for the unattended end-to-end self-test: it walks
+    // the login -> world -> shop sequence across every scene. Inert unless
+    // MU_AUTOTEST=1 is in the environment.
+    AutoTestController::Instance().Update();
 
     g_frameTiming.MarkFrameRendered();
 

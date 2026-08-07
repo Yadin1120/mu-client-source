@@ -2,6 +2,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 #include "stdafx.h"
 #include "Core/Input/KeyState.h"
+#include <string>   // g_pendingCapturePath (on-demand screenshot hook)
 
 #define WIN32_LEAN_AND_MEAN
 #define WIN32_EXTRA_LEAN
@@ -194,14 +195,10 @@ GLvoid KillGLWindow(GLvoid)
 // Nth presented frame to MU_CAPTURE_PATH (default /tmp/mu-frame.ppm) as a PPM.
 // Used to verify rendering on headless/WSLg setups where X screenshot tools
 // cannot read the window (issue #462). No effect unless the env var is set.
-static void MaybeCaptureFrame()
+// Writes the current framebuffer to `path` as a PPM. Shared by the frame-count
+// capture below and by the on-demand hook the autotest controller uses.
+static void WriteFramebufferPpm(const char* path, const char* what)
 {
-    const char* want = std::getenv("MU_CAPTURE_FRAME");
-    if (!want) return;
-    static long s_frame = 0;
-    const long target = std::strtol(want, nullptr, 10);
-    if (++s_frame != target) return;
-
     int w = 0, h = 0;
     SDL_GetWindowSizeInPixels(g_sdlWindow, &w, &h);
     if (w <= 0 || h <= 0) return;
@@ -210,8 +207,6 @@ static void MaybeCaptureFrame()
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
 
-    const char* path = std::getenv("MU_CAPTURE_PATH");
-    if (!path) path = "/tmp/mu-frame.ppm";
     if (FILE* fp = std::fopen(path, "wb"))
     {
         std::fprintf(fp, "P6\n%d %d\n255\n", w, h);
@@ -219,8 +214,40 @@ static void MaybeCaptureFrame()
         for (int y = h - 1; y >= 0; --y)
             std::fwrite(pixels.data() + static_cast<size_t>(y) * w * 3, 1, static_cast<size_t>(w) * 3, fp);
         std::fclose(fp);
-        std::fprintf(stderr, "[capture] wrote frame %ld (%dx%d) to %s\n", target, w, h, path);
+        std::fprintf(stderr, "[capture] wrote %s (%dx%d) to %s\n", what, w, h, path);
     }
+}
+
+// Requested path for the next on-demand capture, empty when none is pending.
+// The shot itself has to happen here, on the render thread with the frame still
+// in the back buffer - callers elsewhere only name the file.
+static std::string g_pendingCapturePath;
+
+void RequestFrameCapture(const char* path)
+{
+    if (path) g_pendingCapturePath = path;
+}
+
+static void MaybeCaptureFrame()
+{
+    if (!g_pendingCapturePath.empty())
+    {
+        const std::string path = g_pendingCapturePath;
+        g_pendingCapturePath.clear();
+        WriteFramebufferPpm(path.c_str(), "requested frame");
+    }
+
+    const char* want = std::getenv("MU_CAPTURE_FRAME");
+    if (!want) return;
+    static long s_frame = 0;
+    const long target = std::strtol(want, nullptr, 10);
+    if (++s_frame != target) return;
+
+    const char* path = std::getenv("MU_CAPTURE_PATH");
+    if (!path) path = "/tmp/mu-frame.ppm";
+    char label[64];
+    std::snprintf(label, sizeof(label), "frame %ld", target);
+    WriteFramebufferPpm(path, label);
 }
 #endif
 

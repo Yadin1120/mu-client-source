@@ -130,6 +130,33 @@ jobs:
           tar -xzf /tmp/mu-assets.tar.gz -C build-macos/src
           ls build-macos/src | head
 
+      - name: Play the game end to end (autotest)
+        # The real verdict for the Mac client: log in against the live server,
+        # enter the world and open the cash shop, with no human and no Mac.
+        # Best effort - a CI runner that cannot give a GL context must not
+        # redden a good build. The PASS/FAIL line below is the signal.
+        continue-on-error: true
+        working-directory: build-macos/src
+        env:
+          MU_AUTOTEST: "1"
+          MU_AUTOTEST_USER: ${{ secrets.MACTEST_USER }}
+          MU_AUTOTEST_PASS: ${{ secrets.MACTEST_PASS }}
+        run: |
+          gtimeout 240 ./Main > autotest.log 2>&1 || true
+          echo "--- autotest trace ---"
+          grep '\[autotest\]' autotest.log || echo "(no autotest output - did the client start?)"
+          echo "--- screenshots ---"
+          for f in autotest-*.ppm; do
+            [ -f "$f" ] || continue
+            sips -s format png "$f" --out "${f%.ppm}.png" >/dev/null 2>&1 || true
+            ls -la "$f"
+          done
+          if grep -q '\[autotest\] PASS' autotest.log; then
+            echo "AUTOTEST PASSED"
+          else
+            echo "AUTOTEST DID NOT PASS - see the trace above and the uploaded screenshots"
+          fi
+
       - name: Try to render a frame
         # The engine can dump the Nth presented frame to a PPM (Winmain.cpp:193).
         # Whether this produces anything on a CI Mac is exactly the open
@@ -294,6 +321,9 @@ jobs:
           path: |
             build-macos/src/frame.png
             build-macos/src/frame.ppm
+            build-macos/src/autotest-*.png
+            build-macos/src/autotest-*.ppm
+            build-macos/src/autotest.log
             build-macos/src/MuError.log
             build-macos/src/client-stdout.log
           if-no-files-found: ignore
