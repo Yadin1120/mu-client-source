@@ -182,7 +182,14 @@ void AutoTestController::Update()
 
     case Step::PickCharacter:
     {
-        if (SceneFlag != CHARACTER_SCENE || CurrentProtocolState != RECEIVE_CHARACTERS_LIST)
+        // Both states are valid entry points here: RECEIVE_CHARACTERS_LIST for
+        // an account that already has characters, and
+        // RECEIVE_CREATE_CHARACTER_SUCCESS for the one we just created - the
+        // first run of this test hung precisely because it only accepted the
+        // former, so a freshly created character was never selected.
+        if (SceneFlag != CHARACTER_SCENE ||
+            (CurrentProtocolState != RECEIVE_CHARACTERS_LIST &&
+             CurrentProtocolState != RECEIVE_CREATE_CHARACTER_SUCCESS))
         {
             break;
         }
@@ -214,6 +221,11 @@ void AutoTestController::Update()
             break;
         }
         Capture("charlist");
+        // The creation window auto-opens on an empty account and stays up
+        // afterwards; close it so the world screenshots are not taken through
+        // a dialog.
+        CUIMng& uiMng = CUIMng::Instance();
+        uiMng.HideWin(&uiMng.m_CharMakeWin);
         SelectedHero = live;
         StartGame();
         EnterStep(Step::EnterWorld, "entering the world");
