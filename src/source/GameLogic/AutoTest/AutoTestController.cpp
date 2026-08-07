@@ -95,7 +95,7 @@ void AutoTestController::Fail(const char* why)
 
 void AutoTestController::Pass()
 {
-    std::fprintf(stderr, "[autotest] PASS: logged in, entered the world, cash shop opened\n");
+    std::fprintf(stderr, "[autotest] PASS: logged in, entered the world, cash shop and MU Pass opened\n");
     std::fflush(stderr);
     m_step = Step::Done;
 }
@@ -252,7 +252,7 @@ void AutoTestController::Update()
         if (g_pNewUISystem->IsVisible(SEASON3B::INTERFACE_INGAMESHOP))
         {
             Capture("shop");
-            Pass();
+            EnterStep(Step::CloseShop, "closing the cash shop");
             break;
         }
         // IsInGameShopOpen gates on standing still, being in a safe zone and
@@ -292,6 +292,29 @@ void AutoTestController::Update()
         }
         break;
     }
+
+    case Step::CloseShop:
+        // Tell the server the shop is closed, the way the X key does, so the
+        // next window opens on a clean screen instead of on top of the shop.
+        if (g_pNewUISystem->IsVisible(SEASON3B::INTERFACE_INGAMESHOP))
+        {
+            SocketClient->ToGameServer()->SendCashShopOpenState(1);
+            g_pNewUISystem->Hide(SEASON3B::INTERFACE_INGAMESHOP);
+            break;
+        }
+        EnterStep(Step::OpenMuPass, "opening MU Pass");
+        break;
+
+    case Step::OpenMuPass:
+        // Purely local, unlike the shop: the T key just toggles the window.
+        if (g_pNewUISystem->IsVisible(SEASON3B::INTERFACE_MUPASS))
+        {
+            Capture("mupass");
+            Pass();
+            break;
+        }
+        g_pNewUISystem->Toggle(SEASON3B::INTERFACE_MUPASS);
+        break;
 
     default:
         break;

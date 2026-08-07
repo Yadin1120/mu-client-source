@@ -39,6 +39,8 @@ private:
         EnterWorld,     // waiting for the world to finish loading
         Settle,         // let the hero come to rest inside the safe zone
         OpenShop,       // request the cash shop
+        CloseShop,      // put it away before opening the next window
+        OpenMuPass,     // open the MU Pass window
         Done,
         Failed,
     };
