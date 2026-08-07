@@ -48,7 +48,10 @@ jobs:
         # OpenGL and GLU come from the system framework, so nothing to install
         # for those.
         run: |
-          brew install ninja glew jpeg-turbo pkg-config
+          # coreutils: for gtimeout in the render step - macOS ships no timeout
+          # command, and without a watchdog a hung client would eat the 6-hour
+          # job cap in billable minutes.
+          brew install ninja glew jpeg-turbo pkg-config coreutils
 
       - name: Install .NET SDK 10
         # Builds the osx-arm64 Native AOT client library (.dylib) and, at
@@ -112,7 +115,14 @@ jobs:
         continue-on-error: true
         working-directory: build-macos/src
         run: |
-          MU_CAPTURE_FRAME=120 MU_CAPTURE_PATH=frame.ppm timeout 120 ./Main || true
+          # gtimeout (brew coreutils), not timeout - macOS has no timeout
+          # command, and the first run of this step silently never launched the
+          # client because of exactly that.
+          MU_CAPTURE_FRAME=120 MU_CAPTURE_PATH=frame.ppm gtimeout 120 ./Main > client-stdout.log 2>&1 || true
+          echo "--- client output (tail) ---"
+          tail -40 client-stdout.log || true
+          echo "--- MuError.log ---"
+          tail -40 MuError.log 2>/dev/null || echo "(no MuError.log)"
           if [ -f frame.ppm ]; then
             echo "RENDERED A FRAME"
             sips -s format png frame.ppm --out frame.png >/dev/null 2>&1 || true
@@ -140,4 +150,5 @@ jobs:
             build-macos/src/frame.png
             build-macos/src/frame.ppm
             build-macos/src/MuError.log
+            build-macos/src/client-stdout.log
           if-no-files-found: ignore
