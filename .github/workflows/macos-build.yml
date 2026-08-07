@@ -156,6 +156,93 @@ jobs:
             echo "no frame - the runner gave no usable GL context, or the client exited early"
           fi
 
+      - name: Build the .dmg installer
+        # A Mac-shaped delivery: a tiny .app whose executable is a bootstrap
+        # script. On first launch it downloads the game content into
+        # ~/Library/Application Support/MU-AI - a user-writable location - and
+        # always refreshes the binaries there from the bundle, then launches
+        # the game from that directory.
+        #
+        # This shape is load-bearing, not cosmetic. The engine writes its
+        # config, logs and shop cache next to the executable; a bundle in
+        # /Applications is effectively read-only (App Translocation plus
+        # signature invalidation), so the game must NOT run from inside the
+        # bundle. Running from Application Support sidesteps translocation
+        # entirely and keeps every current engine write-path working unchanged.
+        # It also gives us updates for free: a new .app means new binaries
+        # copied over on next launch, while config.ini and settings survive.
+        working-directory: build-macos/src
+        run: |
+          APP="MU AI.app"
+          rm -rf "$APP" dist MU-AI.dmg
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+          cp Main MUnique.Client.Library.dylib libturbojpeg.0.dylib "$APP/Contents/MacOS/"
+
+          cat > "$APP/Contents/MacOS/MUAI" <<'BOOTSTRAP'
+          #!/bin/bash
+          BASE="https://play.mu-ai.online/launcher/mac"
+          DIR="$HOME/Library/Application Support/MU-AI"
+          APPDIR="$(cd "$(dirname "$0")" && pwd)"
+          mkdir -p "$DIR"
+          if [ ! -d "$DIR/Data" ]; then
+            osascript -e 'display notification "מוריד את קבצי המשחק (~560MB). המשחק ייפתח לבד כשההורדה תסתיים." with title "MU AI"' >/dev/null 2>&1 || true
+            if ! curl -fL -C - -o "$DIR/mu-files.tar.gz" "$BASE/mu-mac-files-lite.tar.gz"; then
+              osascript -e 'display dialog "ההורדה נכשלה — בדקו את חיבור האינטרנט ונסו שוב." with title "MU AI" buttons {"סגור"} default button 1' >/dev/null 2>&1 || true
+              exit 1
+            fi
+            tar -xzf "$DIR/mu-files.tar.gz" -C "$DIR" && rm -f "$DIR/mu-files.tar.gz"
+          fi
+          for f in Main MUnique.Client.Library.dylib libturbojpeg.0.dylib; do
+            cp -f "$APPDIR/$f" "$DIR/"
+          done
+          chmod +x "$DIR/Main"
+          cd "$DIR"
+          exec ./Main
+          BOOTSTRAP
+          chmod +x "$APP/Contents/MacOS/MUAI"
+
+          cat > "$APP/Contents/Info.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleExecutable</key><string>MUAI</string>
+            <key>CFBundleIdentifier</key><string>online.mu-ai.client</string>
+            <key>CFBundleName</key><string>MU AI</string>
+            <key>CFBundleDisplayName</key><string>MU AI</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>1.0.0</string>
+            <key>CFBundleVersion</key><string>1</string>
+            <key>CFBundleIconFile</key><string>AppIcon</string>
+            <key>LSMinimumSystemVersion</key><string>12.0</string>
+            <key>LSApplicationCategoryType</key><string>public.app-category.games</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict>
+          </plist>
+          PLIST
+
+          # Icon, best effort: converted from the Windows resource icon. An
+          # icon failure must never redden a working build.
+          (
+            set -e
+            ICO="$GITHUB_WORKSPACE/src/source/App/Platform/Windows/icon1.ico"
+            mkdir icon.iconset
+            sips -s format png -z 1024 1024 "$ICO" --out icon.iconset/icon_512x512@2x.png
+            for s in 16 32 128 256 512; do
+              sips -z $s $s icon.iconset/icon_512x512@2x.png --out icon.iconset/icon_${s}x${s}.png
+              sips -z $((s*2)) $((s*2)) icon.iconset/icon_512x512@2x.png --out icon.iconset/icon_${s}x${s}@2x.png
+            done
+            iconutil -c icns icon.iconset -o "$APP/Contents/Resources/AppIcon.icns"
+          ) || echo "icon conversion failed - shipping without a custom icon"
+
+          codesign -s - --force --deep "$APP"
+
+          mkdir dist
+          cp -R "$APP" dist/
+          ln -s /Applications dist/Applications
+          hdiutil create -volname "MU AI" -srcfolder dist -ov -format UDZO MU-AI.dmg
+          ls -la MU-AI.dmg
+
       - name: Upload client binary
         uses: actions/upload-artifact@v4
         with:
@@ -164,6 +251,7 @@ jobs:
             build-macos/src/Main
             build-macos/src/MUnique.Client.Library.dylib
             build-macos/src/libturbojpeg*.dylib
+            build-macos/src/MU-AI.dmg
           if-no-files-found: error
 
       - name: Upload the rendered frame
