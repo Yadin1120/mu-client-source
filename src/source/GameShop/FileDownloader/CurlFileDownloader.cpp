@@ -90,7 +90,22 @@ WZResult CurlFileDownloader::DownloadFile(const std::wstring& url,
 {
     WZResult result;
 
-    const std::filesystem::path targetPath(localPath);
+    // The engine composes local paths Windows-style (InGameShopSystem builds
+    // "<cwd>\data\InGameShopScript..."). Off Windows a backslash is an ordinary
+    // filename character, so the whole thing arrives as ONE component: there is
+    // no parent directory to create, the open fails, and the shop reports a
+    // download error that looks like a network fault but is not. Normalise to
+    // '/' before touching the filesystem.
+    std::wstring nativePath = localPath;
+    for (wchar_t& ch : nativePath)
+    {
+        if (ch == L'\\')
+        {
+            ch = L'/';
+        }
+    }
+
+    const std::filesystem::path targetPath(nativePath);
     std::error_code fsError;
     if (targetPath.has_parent_path())
     {
