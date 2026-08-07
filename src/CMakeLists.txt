@@ -352,6 +352,14 @@ elseif (APPLE)
   find_library(GLEW_LIBRARY NAMES GLEW REQUIRED)
   find_library(TURBOJPEG_LIBRARY NAMES turbojpeg REQUIRED)
   target_compile_definitions(MuClient PUBLIC GL_SILENCE_DEPRECATION)
+  # The tree is full of `POINT p = { (long)x, ... }` initializers, upstream
+  # included. Off Windows LONG is int32_t while long is 64-bit, which makes
+  # those narrowing conversions - and Apple clang hard-errors on narrowing in
+  # braced init, where the GCC the Linux job uses lets the same lines through.
+  # These are screen coordinates that never approach 32 bits; patching dozens
+  # of upstream files would buy a permanent merge burden and no safety. Align
+  # this compiler with what every other platform already accepts.
+  target_compile_options(MuClient PUBLIC -Wno-c++11-narrowing)
   target_link_libraries(MuClient PUBLIC
     m
     OpenGL::GL
