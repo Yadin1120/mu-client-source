@@ -25,4 +25,12 @@ namespace AudioPlayer
     void SetMusicVolume(int level);
 
     int ClampVolume(int level);
+
+#ifndef _WIN32
+    // The mixer device, shared with the sound-effect backend (DSPlaySound.cpp
+    // off Windows). One device for the whole process: SDL mixes every track
+    // itself, and opening a second device would fight this one for the
+    // hardware. Null until Initialize() succeeds.
+    struct MIX_Mixer* Mixer();
+#endif
 }

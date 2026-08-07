@@ -209,3 +209,15 @@ int GetMp3PlayPosition()
     const Sint64 position = MIX_GetTrackPlaybackPosition(g_MusicTrack);
     return static_cast<int>((position * 100) / duration);
 }
+
+#ifndef _WIN32
+namespace AudioPlayer
+{
+    // Handed to the sound-effect backend so both share one device; see the
+    // note in AudioPlayer.h.
+    MIX_Mixer* Mixer()
+    {
+        return g_Mixer;
+    }
+}
+#endif

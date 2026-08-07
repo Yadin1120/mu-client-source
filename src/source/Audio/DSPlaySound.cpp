@@ -780,22 +780,269 @@ void Set3DSoundPosition()
     Manager().Update3DPositions();
 }
 
-#else  // ---- non-Windows: DirectSound is unavailable ------------------------
+#else  // ---- non-Windows: SDL3_mixer backend -------------------------------
 
-// Sound effects run on DirectSound, which has no portable equivalent yet
-// (issue #462). Until an SDL_mixer port, the public API is a silent no-op so
-// every caller still builds and runs. Music already plays through SDL_mixer.
-HRESULT InitDirectSound(HWND) { return S_OK; }
-void    SetEnableSound(bool) {}
-void    FreeDirectSound() {}
-void    LoadWaveFile(ESound, const wchar_t*, int, bool) {}
-HRESULT PlayBuffer(ESound, OBJECT*, BOOL) { return S_OK; }
-void    StopBuffer(ESound, BOOL) {}
-void    AllStopSound(void) {}
-void    Set3DSoundPosition() {}
-HRESULT ReleaseBuffer(int) { return S_OK; }
-HRESULT RestoreBuffers(int, int) { return S_OK; }
-void    SetVolume(int, long) {}
-void    SetMasterVolume(long) {}
+// Sound effects on SDL3_mixer, mirroring the DirectSound semantics above so no
+// call site changes: LoadWaveFile registers a buffer, PlayBuffer starts it on a
+// free voice, and 3D sounds are panned from the hero's position each frame.
+//
+// The WAV decoding is deliberately the SAME code the Windows build uses -
+// waveIO sits on the portable mmio shim and already resolves paths - so both
+// platforms agree on which files exist and how they are read. Only the
+// playback device differs.
+//
+// One mixer device for the whole process, borrowed from AudioPlayer (music):
+// SDL mixes everything itself, and a second device would contend for the
+// hardware.
+
+#include "Audio/AudioPlayer.h"
+#include "Engine/Object/ZzzObject.h"
+
+#include <SDL3/SDL.h>
+#include <SDL3_mixer/SDL_mixer.h>
+
+#include <algorithm>
+#include <array>
+#include <memory>
+#include <vector>
+
+extern CHARACTER* Hero;   // the listener sits on the hero (Hero->Object.Position)
+
+namespace
+{
+    // Distance at which a positional sound fades to silence, in world units.
+    // Matches the DirectSound listener's max distance closely enough that
+    // ambience keeps the same reach it has on Windows.
+    constexpr float k3DMaxDistance = 1500.0f;
+
+    struct SfxBuffer
+    {
+        MIX_Audio* audio = nullptr;
+        std::vector<MIX_Track*> voices;   // one per simultaneous playback
+        bool is3D = false;
+        float gain = 1.0f;                // per-buffer volume (SetVolume)
+        OBJECT* source[8] = {};           // world object driving each voice
+    };
+
+    std::array<SfxBuffer, MAX_BUFFER> g_buffers;
+    bool g_enabled = true;
+    float g_masterGain = 1.0f;
+
+    MIX_Mixer* Mixer() { return AudioPlayer::Mixer(); }
+
+    // Wrap the decoded PCM in the WAV container SDL expects, so the bytes
+    // waveIO produced can be handed to MIX_LoadAudio_IO without a temp file.
+    std::vector<Uint8> BuildWavImage(const WAVEFORMATEX& fmt, const std::vector<Uint8>& pcm)
+    {
+        const Uint32 dataSize = static_cast<Uint32>(pcm.size());
+        std::vector<Uint8> wav;
+        wav.reserve(44 + pcm.size());
+
+        auto put32 = [&wav](Uint32 v) {
+            wav.push_back(static_cast<Uint8>(v & 0xFF));
+            wav.push_back(static_cast<Uint8>((v >> 8) & 0xFF));
+            wav.push_back(static_cast<Uint8>((v >> 16) & 0xFF));
+            wav.push_back(static_cast<Uint8>((v >> 24) & 0xFF));
+        };
+        auto put16 = [&wav](Uint16 v) {
+            wav.push_back(static_cast<Uint8>(v & 0xFF));
+            wav.push_back(static_cast<Uint8>((v >> 8) & 0xFF));
+        };
+        auto puts = [&wav](const char* s) { for (int i = 0; i < 4; ++i) wav.push_back(static_cast<Uint8>(s[i])); };
+
+        puts("RIFF"); put32(36 + dataSize); puts("WAVE");
+        puts("fmt "); put32(16);
+        put16(static_cast<Uint16>(fmt.wFormatTag));
+        put16(static_cast<Uint16>(fmt.nChannels));
+        put32(static_cast<Uint32>(fmt.nSamplesPerSec));
+        put32(static_cast<Uint32>(fmt.nAvgBytesPerSec));
+        put16(static_cast<Uint16>(fmt.nBlockAlign));
+        put16(static_cast<Uint16>(fmt.wBitsPerSample));
+        puts("data"); put32(dataSize);
+        wav.insert(wav.end(), pcm.begin(), pcm.end());
+        return wav;
+    }
+
+    // A voice that is free (never started, or finished playing).
+    MIX_Track* FreeVoice(SfxBuffer& buf, int& outIndex)
+    {
+        for (size_t i = 0; i < buf.voices.size(); ++i)
+        {
+            if (!MIX_TrackPlaying(buf.voices[i]))
+            {
+                outIndex = static_cast<int>(i);
+                return buf.voices[i];
+            }
+        }
+        // All voices busy: reuse the first, the way DirectSound's buffer
+        // duplication runs out and restarts the oldest.
+        outIndex = 0;
+        return buf.voices.empty() ? nullptr : buf.voices[0];
+    }
+}
+
+HRESULT InitDirectSound(HWND)
+{
+    // AudioPlayer::Initialize already opened the device; nothing else to do.
+    return Mixer() ? S_OK : E_FAIL;
+}
+
+void SetEnableSound(bool b)
+{
+    g_enabled = b;
+    if (!b) AllStopSound();
+}
+
+void FreeDirectSound()
+{
+    for (SfxBuffer& buf : g_buffers)
+    {
+        for (MIX_Track* voice : buf.voices)
+        {
+            if (voice) { MIX_StopTrack(voice, 0); MIX_DestroyTrack(voice); }
+        }
+        buf.voices.clear();
+        if (buf.audio) { MIX_DestroyAudio(buf.audio); buf.audio = nullptr; }
+    }
+}
+
+void LoadWaveFile(ESound Buffer, const wchar_t* strFileName, int BufferChannel, bool Enable3DSound)
+{
+    if (Buffer < 0 || Buffer >= MAX_BUFFER || !Mixer()) return;
+
+    SfxBuffer& buf = g_buffers[Buffer];
+    if (buf.audio) return;                      // already loaded
+
+    auto waveFile = std::make_unique<waveIO>(waveIO::Mode::Input);
+    if (!waveFile->LoadWaveHeader(strFileName)) return;
+
+    const WAVEFORMATEX format = waveFile->GetWaveFormatEx();
+    const int dataSize = waveFile->GetDataSize();
+    if (dataSize <= 0) return;
+
+    std::vector<Uint8> pcm(static_cast<size_t>(dataSize));
+    if (!waveFile->ReadWaveData(reinterpret_cast<char*>(pcm.data()), dataSize)) return;
+
+    const std::vector<Uint8> wav = BuildWavImage(format, pcm);
+    SDL_IOStream* io = SDL_IOFromConstMem(wav.data(), wav.size());
+    if (!io) return;
+
+    // predecode=true: these are short effects played repeatedly, and decoding
+    // once up front keeps the mixer callback free of file work.
+    buf.audio = MIX_LoadAudio_IO(Mixer(), io, /*predecode=*/true, /*closeio=*/true);
+    if (!buf.audio) return;
+
+    buf.is3D = Enable3DSound;
+    const int voices = std::clamp(BufferChannel, 1, 8);
+    for (int i = 0; i < voices; ++i)
+    {
+        MIX_Track* track = MIX_CreateTrack(Mixer());
+        if (!track) break;
+        MIX_SetTrackAudio(track, buf.audio);
+        buf.voices.push_back(track);
+    }
+}
+
+HRESULT PlayBuffer(ESound Buffer, OBJECT* Object, BOOL bLooped)
+{
+    if (!g_enabled || Buffer < 0 || Buffer >= MAX_BUFFER) return S_OK;
+
+    SfxBuffer& buf = g_buffers[Buffer];
+    if (!buf.audio || buf.voices.empty()) return S_OK;
+
+    int index = 0;
+    MIX_Track* voice = FreeVoice(buf, index);
+    if (!voice) return S_OK;
+
+    buf.source[index] = buf.is3D ? Object : nullptr;
+    MIX_SetTrackGain(voice, buf.gain * g_masterGain);
+    // -1 loops forever, 0 plays once - the same two cases the callers use.
+    MIX_PlayTrack(voice, bLooped ? -1 : 0);
+    return S_OK;
+}
+
+void StopBuffer(ESound Buffer, BOOL)
+{
+    if (Buffer < 0 || Buffer >= MAX_BUFFER) return;
+    for (MIX_Track* voice : g_buffers[Buffer].voices)
+        if (voice) MIX_StopTrack(voice, 0);
+}
+
+void AllStopSound(void)
+{
+    for (SfxBuffer& buf : g_buffers)
+        for (MIX_Track* voice : buf.voices)
+            if (voice) MIX_StopTrack(voice, 0);
+}
+
+void Set3DSoundPosition()
+{
+    if (!Hero) return;
+
+    for (SfxBuffer& buf : g_buffers)
+    {
+        if (!buf.is3D) continue;
+        for (size_t i = 0; i < buf.voices.size(); ++i)
+        {
+            MIX_Track* voice = buf.voices[i];
+            OBJECT* src = buf.source[i];
+            if (!voice || !src || !MIX_TrackPlaying(voice)) continue;
+
+            // Relative to the hero, exactly as the DirectSound path measures
+            // it (the listener sits on the hero, not the camera).
+            // World units are large; scale into the mixer's space and let it
+            // handle attenuation and panning from there.
+            const float dx = src->Position[0] - Hero->Object.Position[0];
+            const float dy = src->Position[1] - Hero->Object.Position[1];
+            const float dz = src->Position[2] - Hero->Object.Position[2];
+            const MIX_Point3D pos = {
+                dx / k3DMaxDistance * 10.0f,
+                dz / k3DMaxDistance * 10.0f,
+                dy / k3DMaxDistance * 10.0f,
+            };
+            MIX_SetTrack3DPosition(voice, &pos);
+        }
+    }
+}
+
+HRESULT ReleaseBuffer(int Buffer)
+{
+    if (Buffer < 0 || Buffer >= MAX_BUFFER) return S_OK;
+    SfxBuffer& buf = g_buffers[Buffer];
+    for (MIX_Track* voice : buf.voices)
+    {
+        if (voice) { MIX_StopTrack(voice, 0); MIX_DestroyTrack(voice); }
+    }
+    buf.voices.clear();
+    if (buf.audio) { MIX_DestroyAudio(buf.audio); buf.audio = nullptr; }
+    return S_OK;
+}
+
+HRESULT RestoreBuffers(int, int)
+{
+    // DirectSound buffers could be lost when another app took the device;
+    // SDL owns mixing here, so there is nothing to restore.
+    return S_OK;
+}
+
+void SetVolume(int Buffer, long vol)
+{
+    if (Buffer < 0 || Buffer >= MAX_BUFFER) return;
+    // The engine passes hundredths of a decibel of attenuation (0 = full,
+    // -10000 = silence), which is what DirectSound wanted.
+    const float gain = std::clamp(SDL_powf(10.0f, static_cast<float>(vol) / 2000.0f), 0.0f, 1.0f);
+    SfxBuffer& buf = g_buffers[Buffer];
+    buf.gain = gain;
+    for (MIX_Track* voice : buf.voices)
+        if (voice) MIX_SetTrackGain(voice, gain * g_masterGain);
+}
+
+void SetMasterVolume(long vol)
+{
+    g_masterGain = std::clamp(SDL_powf(10.0f, static_cast<float>(vol) / 2000.0f), 0.0f, 1.0f);
+    for (SfxBuffer& buf : g_buffers)
+        for (MIX_Track* voice : buf.voices)
+            if (voice) MIX_SetTrackGain(voice, buf.gain * g_masterGain);
+}
 
 #endif // _WIN32
