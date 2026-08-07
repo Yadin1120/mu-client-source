@@ -213,8 +213,18 @@ jobs:
             fi
           fi
 
+          # Refresh the binaries only when they actually changed: this script
+          # runs quarantined (the app came from a browser), so every file it
+          # writes inherits quarantine - and an unconditional copy meant
+          # Gatekeeper re-blocked Main on EVERY launch, not once. cmp keeps the
+          # already-approved binary byte-identical across launches, and the
+          # xattr strip clears the flag from fresh copies so one approval of
+          # the app is the only gate the player ever sees.
           for f in Main MUnique.Client.Library.dylib libturbojpeg.0.dylib; do
-            cp -f "$APPDIR/$f" "$DIR/"
+            if ! cmp -s "$APPDIR/$f" "$DIR/$f"; then
+              cp -f "$APPDIR/$f" "$DIR/"
+              xattr -d com.apple.quarantine "$DIR/$f" 2>/dev/null || true
+            fi
           done
           chmod +x "$DIR/Main"
           cd "$DIR"
