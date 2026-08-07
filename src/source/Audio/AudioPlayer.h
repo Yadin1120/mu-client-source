@@ -26,11 +26,20 @@ namespace AudioPlayer
 
     int ClampVolume(int level);
 
+}
+
 #ifndef _WIN32
+// Declared at global scope, matching SDL_mixer's own declaration: writing
+// "struct MIX_Mixer*" inside the namespace would have declared a *new*
+// AudioPlayer::MIX_Mixer type that has nothing to do with the real one.
+struct MIX_Mixer;
+
+namespace AudioPlayer
+{
     // The mixer device, shared with the sound-effect backend (DSPlaySound.cpp
     // off Windows). One device for the whole process: SDL mixes every track
     // itself, and opening a second device would fight this one for the
     // hardware. Null until Initialize() succeeds.
-    struct MIX_Mixer* Mixer();
-#endif
+    MIX_Mixer* Mixer();
 }
+#endif
