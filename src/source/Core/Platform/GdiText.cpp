@@ -263,12 +263,16 @@ HFONT CreateFontW(int cHeight, int /*cWidth*/, int /*cEscapement*/, int /*cOrien
 {
     // The requested GDI face name is the font selector's channel: the shared font
     // factory passes the configured UI font name here. "Tahoma" is the built-in
-    // default and has no Linux equivalent, so map it to the empty family and let
-    // fontconfig pick the system sans-serif (unchanged default look). Any other
-    // name is resolved as-is via fontconfig.
+    // default and does not exist off Windows, so map it to the bundled DejaVu
+    // Sans rather than the empty family: empty meant "whatever the system's
+    // sans-serif is", and that roulette is exactly what put a Hebrew-less face
+    // on the first real-Mac test - squares for every Hebrew string. DejaVu
+    // ships with the game, covers Hebrew, and is what Linux systems resolve to
+    // anyway, so the default look is now deterministic on every platform. A
+    // player's explicit font choice still resolves as-is.
     std::string family = ToUtf8(pszFaceName);
     if (family == "Tahoma")
-        family.clear();
+        family = "DejaVu Sans";
 
     const MuGdiFace* face = LoadFace(family, cWeight >= FW_SEMIBOLD);
     if (!face)
