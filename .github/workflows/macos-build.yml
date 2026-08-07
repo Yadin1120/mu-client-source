@@ -73,7 +73,11 @@ jobs:
         run: cmake --build build-macos --target GenWireSizes
 
       - name: Build client (engine + osx-arm64 .dylib) and tests
-        run: cmake --build build-macos -j"$(sysctl -n hw.ncpu)"
+        # -k 0: keep compiling past failures so one run surfaces EVERY broken
+        # translation unit, not just the first. Porting fixes land in batches
+        # instead of one 25-minute round trip per error. The step still fails
+        # when anything failed - this changes reporting, not the verdict.
+        run: cmake --build build-macos -j"$(sysctl -n hw.ncpu)" -- -k 0
 
       - name: Run unit tests
         run: ctest --test-dir build-macos --output-on-failure
