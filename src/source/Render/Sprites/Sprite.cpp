@@ -197,13 +197,17 @@ BOOL CSprite::PtInSprite(long lXPos, long lYPos)
     if (!m_bShow)
         return FALSE;
 
-    POINT pt = { lXPos, lYPos };
+    // LONG casts, not long: off Windows LONG is a 32-bit int while long is
+    // 64-bit, and a braced initializer turns that narrowing into a hard error.
+    // Screen coordinates never approach 32 bits; on Windows LONG is long and
+    // the cast is a no-op.
+    POINT pt = { static_cast<LONG>(lXPos), static_cast<LONG>(lYPos) };
 
     RECT rc = {
-        long(m_aScrCoord[LT].fX * m_fScaleX),
-        long((m_fScrHeight - m_aScrCoord[LT].fY) * m_fScaleY),
-        long(m_aScrCoord[RB].fX * m_fScaleX),
-        long((m_fScrHeight - m_aScrCoord[RB].fY) * m_fScaleY)
+        LONG(m_aScrCoord[LT].fX * m_fScaleX),
+        LONG((m_fScrHeight - m_aScrCoord[LT].fY) * m_fScaleY),
+        LONG(m_aScrCoord[RB].fX * m_fScaleX),
+        LONG((m_fScrHeight - m_aScrCoord[RB].fY) * m_fScaleY)
     };
 
     return ::PtInRect(&rc, pt);
