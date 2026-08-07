@@ -27,6 +27,14 @@ public:
     // Once per rendered frame, in every scene. No-op unless enabled.
     void Update();
 
+    // One entry per window the window tour opens. Public because the table
+    // itself lives in the .cpp, next to the tuning constants it belongs with.
+    struct TourEntry
+    {
+        int interfaceId;
+        const char* label;
+    };
+
 private:
     AutoTestController() = default;
 
@@ -45,13 +53,6 @@ private:
         WindowTour,     // walk the rest of the player-facing windows
         Done,
         Failed,
-    };
-
-    // One entry per window the tour opens; m_tourIndex walks this table.
-    struct TourEntry
-    {
-        int interfaceId;
-        const char* label;
     };
 
     void EnterStep(Step step, const char* label);
