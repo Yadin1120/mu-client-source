@@ -36,6 +36,10 @@ namespace
     // The hero spawns and then walks a step or two; the shop refuses to open
     // while moving, so give the world a moment to settle before asking.
     constexpr double SETTLE_MS = 4000.0;
+    // Back-to-back CI runs share one test account, and the server holds the
+    // previous session for a short while ("your account is already connected").
+    constexpr double LOGIN_RETRY_MS = 20000.0;
+    constexpr int MAX_LOGIN_ATTEMPTS = 4;
 
     const wchar_t* EnvW(const char* name, wchar_t* buffer, size_t count)
     {
@@ -176,6 +180,7 @@ void AutoTestController::Update()
         wcscpy_s(LogInID, _countof(LogInID), user);
         CurrentProtocolState = REQUEST_LOG_IN;
         SocketClient->ToGameServer()->SendLogin(user, pass, Version, Serial);
+        ++m_loginAttempts;
         EnterStep(Step::PickCharacter, "logging in");
         break;
     }
@@ -191,6 +196,22 @@ void AutoTestController::Update()
             (CurrentProtocolState != RECEIVE_CHARACTERS_LIST &&
              CurrentProtocolState != RECEIVE_CREATE_CHARACTER_SUCCESS))
         {
+            // A back-to-back run hits "your account is already connected":
+            // the previous session is still held server-side and the login is
+            // refused, leaving us waiting on a character list that will never
+            // arrive. The hold clears on its own, so retry the login a few
+            // times before giving up - the same reasoning ReconnectManager
+            // applies after a crash.
+            if (ElapsedMs() > LOGIN_RETRY_MS && m_loginAttempts < MAX_LOGIN_ATTEMPTS)
+            {
+                std::fprintf(stderr, "[autotest] no character list yet - retrying the login "
+                                     "(attempt %d)\n", m_loginAttempts + 1);
+                std::fflush(stderr);
+                CUIMng& retryUi = CUIMng::Instance();
+                retryUi.HideWin(&retryUi.m_MsgWin);
+                CurrentProtocolState = RECEIVE_JOIN_SERVER_SUCCESS;
+                EnterStep(Step::Login, "retrying the login");
+            }
             break;
         }
         // The character scene resets SelectedHero when it initialises, so the

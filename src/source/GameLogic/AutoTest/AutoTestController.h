@@ -58,4 +58,5 @@ private:
     double m_stepStartedMs = 0.0;
     int m_shotIndex = 0;
     bool m_createRequested = false;
+    int m_loginAttempts = 0;
 };
