@@ -256,10 +256,36 @@ void AutoTestController::Update()
             break;
         }
         // IsInGameShopOpen gates on standing still, being in a safe zone and
-        // the catalog having downloaded. Ask once it says yes; the window is
-        // opened by the server's reply, not locally.
-        if (g_pInGameShop->IsInGameShopOpen() &&
-            !g_InGameShopSystem->GetIsRequestShopOpenning())
+        // the catalog having downloaded.
+        if (!g_pInGameShop->IsInGameShopOpen())
+        {
+            break;
+        }
+
+        // The catalog and banners are fetched lazily, by the X-key handler, on
+        // the first open - so a controller that only sends the open request
+        // waits forever for a shop that was never downloaded. This is the same
+        // sequence CNewUIHotKey performs, and it is the part that actually
+        // exercises the HTTP catalog download over the network.
+        if (g_InGameShopSystem->IsScriptDownload())
+        {
+            if (!g_InGameShopSystem->ScriptDownload())
+            {
+                Fail("cash shop catalog download failed");
+                break;
+            }
+        }
+        if (g_InGameShopSystem->IsBannerDownload())
+        {
+            if (g_InGameShopSystem->BannerDownload())
+            {
+                g_pInGameShop->InitBanner(g_InGameShopSystem->GetBannerFileName(),
+                                          g_InGameShopSystem->GetBannerURL());
+            }
+        }
+
+        // The window is opened by the server's reply, not locally.
+        if (!g_InGameShopSystem->GetIsRequestShopOpenning())
         {
             SocketClient->ToGameServer()->SendCashShopOpenState(0);
             g_InGameShopSystem->SetIsRequestShopOpenning(true);
