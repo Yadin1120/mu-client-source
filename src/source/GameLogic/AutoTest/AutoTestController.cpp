@@ -19,6 +19,8 @@
 #include "GameShop/InGameShopSystem.h"      // g_InGameShopSystem
 
 extern double WorldTime;
+extern int MouseX;
+extern int MouseY;
 extern int LogIn;
 extern wchar_t LogInID[MAX_USERNAME_SIZE + 1];
 extern BYTE Version[SIZE_PROTOCOLVERSION];
@@ -40,6 +42,31 @@ namespace
     // previous session for a short while ("your account is already connected").
     constexpr double LOGIN_RETRY_MS = 20000.0;
     constexpr int MAX_LOGIN_ATTEMPTS = 4;
+    // Let a freshly shown window lay itself out before photographing it.
+    constexpr double WINDOW_SETTLE_MS = 1200.0;
+    constexpr double HOVER_SETTLE_MS = 1200.0;
+    // First product tile in the cash shop, in the 640x480 reference space the
+    // UI is authored in (the renderer scales it to the real window).
+    constexpr int SHOP_FIRST_ITEM_X = 372;
+    constexpr int SHOP_FIRST_ITEM_Y = 180;
+
+    // The player-facing windows worth a screenshot, in the order a person would
+    // reasonably open them. Anything needing an NPC, a party or a guild is
+    // included too - it simply gets skipped when it declines to open.
+    const AutoTestController::TourEntry kTour[] = {
+        { SEASON3B::INTERFACE_INVENTORY,        "inventory" },
+        { SEASON3B::INTERFACE_CHARACTER,        "character" },
+        { SEASON3B::INTERFACE_SKILL_LIST,       "skills" },
+        { SEASON3B::INTERFACE_MASTER_LEVEL,     "masterlevel" },
+        { SEASON3B::INTERFACE_MYQUEST,          "quests" },
+        { SEASON3B::INTERFACE_PARTY,            "party" },
+        { SEASON3B::INTERFACE_GUILDINFO,        "guild" },
+        { SEASON3B::INTERFACE_OPTION,           "options" },
+        { SEASON3B::INTERFACE_HELP,             "help" },
+        { SEASON3B::INTERFACE_MUHELPER,         "muhelper" },
+        { SEASON3B::INTERFACE_CHATLOGWINDOW,    "chatlog" },
+        { SEASON3B::INTERFACE_MINI_MAP,         "minimap" },
+    };
 
     const wchar_t* EnvW(const char* name, wchar_t* buffer, size_t count)
     {
@@ -273,7 +300,7 @@ void AutoTestController::Update()
         if (g_pNewUISystem->IsVisible(SEASON3B::INTERFACE_INGAMESHOP))
         {
             Capture("shop");
-            EnterStep(Step::CloseShop, "closing the cash shop");
+            EnterStep(Step::ShopItemHover, "hovering a shop product");
             break;
         }
         // IsInGameShopOpen gates on standing still, being in a safe zone and
@@ -314,6 +341,21 @@ void AutoTestController::Update()
         break;
     }
 
+    case Step::ShopItemHover:
+        // The tooltip follows the cursor, and the cursor is just a pair of
+        // globals - park it over the first product tile and let a few frames
+        // render so the tooltip is actually on screen when the shot is taken.
+        // This is the one capture that proves item names and descriptions
+        // (the longest Hebrew strings the game has) render correctly.
+        MouseX = SHOP_FIRST_ITEM_X;
+        MouseY = SHOP_FIRST_ITEM_Y;
+        if (ElapsedMs() > HOVER_SETTLE_MS)
+        {
+            Capture("shop-item-tooltip");
+            EnterStep(Step::CloseShop, "closing the cash shop");
+        }
+        break;
+
     case Step::CloseShop:
         // Tell the server the shop is closed, the way the X key does, so the
         // next window opens on a clean screen instead of on top of the shop.
@@ -331,11 +373,47 @@ void AutoTestController::Update()
         if (g_pNewUISystem->IsVisible(SEASON3B::INTERFACE_MUPASS))
         {
             Capture("mupass");
-            Pass();
+            g_pNewUISystem->Hide(SEASON3B::INTERFACE_MUPASS);
+            m_tourOpenedMs = WorldTime;
+            EnterStep(Step::WindowTour, "touring the remaining windows");
             break;
         }
         g_pNewUISystem->Toggle(SEASON3B::INTERFACE_MUPASS);
         break;
+
+    case Step::WindowTour:
+    {
+        // One window per pass: show it, give it a few frames to lay itself out,
+        // photograph it, hide it, move on. Windows that refuse to open (some
+        // need an NPC, a party or a guild) are skipped rather than failing the
+        // run - the point is a visual sweep of the Hebrew UI, not a feature
+        // audit.
+        if (m_tourIndex >= static_cast<int>(_countof(kTour)))
+        {
+            Pass();
+            break;
+        }
+        const TourEntry& entry = kTour[m_tourIndex];
+        if (WorldTime - m_tourOpenedMs < WINDOW_SETTLE_MS)
+        {
+            g_pNewUISystem->Show(entry.interfaceId);
+            break;
+        }
+        if (g_pNewUISystem->IsVisible(entry.interfaceId))
+        {
+            Capture(entry.label);
+            g_pNewUISystem->Hide(entry.interfaceId);
+        }
+        else
+        {
+            std::fprintf(stderr, "[autotest] window '%s' did not open - skipping\n", entry.label);
+            std::fflush(stderr);
+        }
+        ++m_tourIndex;
+        m_tourOpenedMs = WorldTime;
+        m_stepStartedMs = WorldTime;   // each window gets its own watchdog
+        break;
+    }
 
     default:
         break;

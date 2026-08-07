@@ -39,10 +39,19 @@ private:
         EnterWorld,     // waiting for the world to finish loading
         Settle,         // let the hero come to rest inside the safe zone
         OpenShop,       // request the cash shop
+        ShopItemHover,  // park the cursor on a product so its tooltip renders
         CloseShop,      // put it away before opening the next window
         OpenMuPass,     // open the MU Pass window
+        WindowTour,     // walk the rest of the player-facing windows
         Done,
         Failed,
+    };
+
+    // One entry per window the tour opens; m_tourIndex walks this table.
+    struct TourEntry
+    {
+        int interfaceId;
+        const char* label;
     };
 
     void EnterStep(Step step, const char* label);
@@ -59,4 +68,6 @@ private:
     int m_shotIndex = 0;
     bool m_createRequested = false;
     int m_loginAttempts = 0;
+    int m_tourIndex = 0;
+    double m_tourOpenedMs = 0.0;
 };
