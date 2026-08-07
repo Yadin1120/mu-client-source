@@ -7,6 +7,7 @@
 
 #include "CurlFileDownloader.h"
 
+#include <cstdio>   // stderr diagnostics for failed catalog downloads
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -157,8 +158,19 @@ WZResult CurlFileDownloader::DownloadFile(const std::wstring& url,
     }
 
     const CURLcode code = curl_easy_perform(curl);
+    long httpStatus = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpStatus);
     curl_easy_cleanup(curl);
     out.close();
+
+    // The in-game failure dialog only carries a formatted message that has
+    // repeatedly arrived empty, which makes a download fault indistinguishable
+    // from a missing translation. Put the raw facts on stderr, where CI and
+    // MuError.log can both see them.
+    std::fprintf(stderr, "[shop] GET %ls -> curl=%d (%s) http=%ld local=%ls\n",
+                 url.c_str(), static_cast<int>(code), curl_easy_strerror(code),
+                 httpStatus, nativePath.c_str());
+    std::fflush(stderr);
 
     if (code == CURLE_OK)
     {
