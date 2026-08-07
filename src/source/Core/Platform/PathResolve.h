@@ -15,7 +15,12 @@
 #include <unistd.h>
 
 #if defined(__APPLE__)
-#include <mach-o/dyld.h>   // _NSGetExecutablePath
+// _NSGetExecutablePath's own declaration, not <mach-o/dyld.h>: that header
+// drags in an old-style `enum DYLD_BOOL { FALSE, TRUE }`, and this file is in
+// the precompiled-header chain - the enum then captures every bare FALSE/TRUE
+// in the engine, breaking call sites that pass FALSE as a null pointer. The
+// signature is stable public ABI (see dyld(3)).
+extern "C" int _NSGetExecutablePath(char* buf, std::uint32_t* bufsize);
 #endif
 
 // Absolute path of the running executable, empty when it cannot be determined.
