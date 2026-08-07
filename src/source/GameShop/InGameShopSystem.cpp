@@ -5,6 +5,10 @@
 #include "I18N/All.h"
 #ifdef KJH_ADD_INGAMESHOP_UI_SYSTEM
 #include "Core/Platform/WinIni.h"   // GetPrivateProfile*W off Windows
+#ifndef _WIN32
+#include <cstdlib>                  // mbstowcs
+#include "Core/Platform/PathResolve.h"   // MuExecutableDir
+#endif
 #include "InGameShopSystem.h"
 #include "Engine/Object/ZzzInventory.h"
 #include "MsgBoxIGSCommon.h"
@@ -31,13 +35,38 @@ namespace
         XShopSource source = {};
 
         wchar_t iniPath[MAX_PATH] = { 0 };
+#ifdef _WIN32
         ::GetCurrentDirectory(MAX_PATH, iniPath);
+#else
+        // Next to the executable, not in the working directory: a macOS .app
+        // launched from Finder starts with the working directory at "/", and
+        // shop.ini would never be found - the shop would then fall back to a
+        // 127.0.0.1 default and fail with no clue why. This matches how
+        // config.ini and the bundled fonts are already located.
+        {
+            const std::string dir = MuExecutableDir();
+            const size_t written = dir.empty()
+                ? 0
+                : std::mbstowcs(iniPath, dir.c_str(), MAX_PATH - 1);
+            if (written == static_cast<size_t>(-1) || written == 0)
+            {
+                ::GetCurrentDirectory(MAX_PATH, iniPath);
+            }
+            else
+            {
+                iniPath[written] = L'\0';
+            }
+        }
+#endif
 
         // Bounded append: a working directory close to MAX_PATH would overflow iniPath with a plain wcscat.
         const size_t used = wcslen(iniPath);
         if (used + 1 < MAX_PATH)
         {
-            wcsncat(iniPath, L"\\shop.ini", MAX_PATH - used - 1);
+            // MuExecutableDir already ends in a separator; GetCurrentDirectory does not.
+            const wchar_t* leaf = (used > 0 && (iniPath[used - 1] == L'/' || iniPath[used - 1] == L'\\'))
+                ? L"shop.ini" : L"\\shop.ini";
+            wcsncat(iniPath, leaf, MAX_PATH - used - 1);
         }
 
         // The explicit W names, not the A/W-dispatch macros: off Windows the

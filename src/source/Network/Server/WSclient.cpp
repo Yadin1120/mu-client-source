@@ -2021,7 +2021,10 @@ void ReceiveNotice(const BYTE* ReceiveBuffer)
 {
     auto Data = (LPPRECEIVE_NOTICE)ReceiveBuffer;
     wchar_t Text[256]{};
-    CMultiLanguage::ConvertFromUtf8(Text, Data->Notice);
+    // Bound the source by the field, the way the chat path already does: the
+    // default length of -1 makes the converter strlen a fixed char[] the
+    // server does not have to null-terminate, reading past the struct.
+    CMultiLanguage::ConvertFromUtf8(Text, Data->Notice, sizeof(Data->Notice));
 
     if (Data->Result == 0)
     {

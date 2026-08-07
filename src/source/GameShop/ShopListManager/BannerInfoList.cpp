@@ -14,6 +14,11 @@
 #include "BannerInfo.h"
 #include <filesystem>
 #include <fstream>
+#include <iterator>   // std::size
+
+#ifndef _WIN32
+#include "Core/Platform/PathResolve.h"
+#endif
 
 CBannerInfoList::CBannerInfoList() // OK
 {
@@ -34,7 +39,16 @@ WZResult CBannerInfoList::LoadBanner(std::wstring strDirPath, std::wstring strSc
 
     std::wstring path = strDirPath + strScriptFileName;
 
+    // Same resolution the catalog parser needs: the composed path is
+    // Windows-spelled, and off Windows a backslash is a filename character
+    // rather than a separator.
+#ifdef _WIN32
     ifs.open(std::filesystem::path(path), std::ifstream::in);
+#else
+    ifs.open(std::filesystem::path(
+                 MuResolvePath(std::filesystem::path(path).string().c_str())),
+             std::ifstream::in);
+#endif
 
     if (ifs.is_open())
     {
@@ -44,7 +58,10 @@ WZResult CBannerInfoList::LoadBanner(std::wstring strDirPath, std::wstring strSc
 
         while (true)
         {
-            if (!ifs.getline(buff, sizeof(buff)))
+            // std::size, not sizeof: wchar_t is 4 bytes off Windows, so
+            // sizeof gave getline a 4096-element budget for a 1024-element
+            // array - a stack smash on any long banner line.
+            if (!ifs.getline(buff, std::size(buff)))
                 break;
 
             CBannerInfo info;

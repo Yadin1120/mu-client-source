@@ -15,6 +15,34 @@
 #include <filesystem>
 #include <fstream>
 
+#ifndef _WIN32
+#include "Core/Platform/PathResolve.h"
+#endif
+
+namespace
+{
+// The catalog paths the shop composes are Windows-spelled ("...\data\
+// InGameShopScript\<ver>\IBSCategory.txt"). Every other reader in the engine
+// funnels through MuResolvePath - _wfopen, CreateFileW, the bitmap loader -
+// but these std::ifstream opens went straight to the filesystem, where a
+// backslash is an ordinary filename character. The download succeeded and the
+// parse then failed on a file "not found" that was sitting right there, which
+// is what made the shop look like a network fault on macOS.
+//
+// The existence check upstream (CListManager::IsScriptFileExist) uses the
+// GetFileAttributes shim, which DOES resolve - so the two disagreed, and the
+// retry loop re-downloaded all three files on every attempt, forever.
+std::filesystem::path ResolveCatalogPath(const wchar_t* szFilePath)
+{
+#ifdef _WIN32
+    return std::filesystem::path(szFilePath);
+#else
+    return std::filesystem::path(
+        MuResolvePath(std::filesystem::path(szFilePath).string().c_str()));
+#endif
+}
+} // namespace
+
 CShopList::CShopList() // OK
 {
     this->m_CategoryListPtr = new CShopCategoryList;
@@ -37,14 +65,14 @@ WZResult CShopList::LoadCategroy(const wchar_t* szFilePath) // OK
 
     std::ifstream ifs;
 
-    ifs.open(std::filesystem::path(szFilePath), std::ifstream::in);
+    ifs.open(ResolveCatalogPath(szFilePath), std::ifstream::in);
 
     DWORD LastError = GetLastError();
 
     for (int n = 0; !ifs.is_open() && n < 10; ++n)
     {
         Sleep(0x64);
-        ifs.open(std::filesystem::path(szFilePath), std::ifstream::in);
+        ifs.open(ResolveCatalogPath(szFilePath), std::ifstream::in);
         LastError = GetLastError();
     }
 
@@ -103,14 +131,14 @@ WZResult CShopList::LoadPackage(const wchar_t* szFilePath) // OK
 
     std::ifstream ifs;
 
-    ifs.open(std::filesystem::path(szFilePath), std::ifstream::in);
+    ifs.open(ResolveCatalogPath(szFilePath), std::ifstream::in);
 
     DWORD LastError = GetLastError();
 
     for (int n = 0; !ifs.is_open() && n < 10; ++n)
     {
         Sleep(0x64);
-        ifs.open(std::filesystem::path(szFilePath), std::ifstream::in);
+        ifs.open(ResolveCatalogPath(szFilePath), std::ifstream::in);
         LastError = GetLastError();
     }
 
@@ -154,14 +182,14 @@ WZResult CShopList::LoadProduct(const wchar_t* szFilePath) // OK
 
     std::ifstream ifs;
 
-    ifs.open(std::filesystem::path(szFilePath), std::ifstream::in);
+    ifs.open(ResolveCatalogPath(szFilePath), std::ifstream::in);
 
     DWORD LastError = GetLastError();
 
     for (int n = 0; !ifs.is_open() && n < 10; ++n)
     {
         Sleep(0x64);
-        ifs.open(std::filesystem::path(szFilePath), std::ifstream::in);
+        ifs.open(ResolveCatalogPath(szFilePath), std::ifstream::in);
         LastError = GetLastError();
     }
 
@@ -217,7 +245,7 @@ FILE_ENCODE CShopList::IsFileEncodingUtf8(const wchar_t* szFilePath) // OK
 {
     std::ifstream ifs;
 
-    ifs.open(std::filesystem::path(szFilePath), std::ifstream::in);
+    ifs.open(ResolveCatalogPath(szFilePath), std::ifstream::in);
 
     if (!ifs.is_open())
     {

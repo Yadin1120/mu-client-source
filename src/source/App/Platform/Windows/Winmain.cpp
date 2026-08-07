@@ -1752,7 +1752,19 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int nC
     g_ErrorReport.WriteFontInfo();
     g_ErrorReport.AddSeparator();
 
+    // "english" is an MSVC-only locale name. Elsewhere setlocale fails and
+    // leaves the process in the "C" locale, where mbstowcs/wcstombs reject
+    // every byte >= 0x80 - so any Hebrew string passing through them (the MU
+    // Helper pickup list, for one) is silently dropped. The empty string picks
+    // up the user's environment, which on macOS is UTF-8.
+#ifdef _WIN32
     setlocale(LC_ALL, "english");
+#else
+    if (!setlocale(LC_ALL, ""))
+    {
+        setlocale(LC_ALL, "en_US.UTF-8");
+    }
+#endif
 
     CInput::Instance().Create(g_hWnd, WindowWidth, WindowHeight);
 

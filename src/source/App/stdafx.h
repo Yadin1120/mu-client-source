@@ -146,13 +146,25 @@
   // overrun smaller buffers, and glibc's _FORTIFY_SOURCE aborts on the
   // mismatch even before anything is written. Only a plain pointer (size
   // unknowable) keeps the 1024 assumption.
+  // On overflow POSIX swprintf returns -1 and leaves the buffer indeterminate
+  // and NOT null-terminated - unlike the MSVC _vsnwprintf path, which always
+  // terminates. Every caller here treats the buffer as a C string afterwards,
+  // so an over-long message turns into a read past the array: that is exactly
+  // how the shop's error dialog came out blank instead of naming the failure.
+  // Terminate defensively so an overflow yields a truncated (or empty) string
+  // rather than garbage.
   template<typename Buf, typename... Args>
   inline int mu_swprintf(Buf&& buffer, const wchar_t* format, Args... args) {
       using Array = std::remove_reference_t<Buf>;
-      if constexpr (std::is_array_v<Array>)
-          return std::swprintf(buffer, std::extent_v<Array>, format, args...);
-      else
-          return std::swprintf(buffer, 1024, format, args...);
+      if constexpr (std::is_array_v<Array>) {
+          const int written = std::swprintf(buffer, std::extent_v<Array>, format, args...);
+          if (written < 0) buffer[std::extent_v<Array> - 1] = L'\0';
+          return written;
+      } else {
+          const int written = std::swprintf(buffer, 1024, format, args...);
+          if (written < 0) buffer[1023] = L'\0';
+          return written;
+      }
   }
   // mu_swprintf_s with explicit size
   template<typename... Args>
