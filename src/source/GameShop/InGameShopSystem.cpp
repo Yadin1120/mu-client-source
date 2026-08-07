@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "I18N/All.h"
 #ifdef KJH_ADD_INGAMESHOP_UI_SYSTEM
+#include "Core/Platform/WinIni.h"   // GetPrivateProfile*W off Windows
 #include "InGameShopSystem.h"
 #include "Engine/Object/ZzzInventory.h"
 #include "MsgBoxIGSCommon.h"
@@ -39,10 +40,13 @@ namespace
             wcsncat(iniPath, L"\\shop.ini", MAX_PATH - used - 1);
         }
 
-        ::GetPrivateProfileString(L"Shop", L"Host", L"127.0.0.1", source.Host, 128, iniPath);
-        source.Port = (unsigned short)::GetPrivateProfileInt(L"Shop", L"Port", 8090, iniPath);
-        ::GetPrivateProfileString(L"Shop", L"ScriptPath", L"/shop", source.ScriptPath, 128, iniPath);
-        ::GetPrivateProfileString(L"Shop", L"BannerPath", L"/shop-banner", source.BannerPath, 128, iniPath);
+        // The explicit W names, not the A/W-dispatch macros: off Windows the
+        // portable shim (WinIni.h) only exists under the real W names, and on
+        // Windows the macro expands to exactly these anyway.
+        ::GetPrivateProfileStringW(L"Shop", L"Host", L"127.0.0.1", source.Host, 128, iniPath);
+        source.Port = (unsigned short)::GetPrivateProfileIntW(L"Shop", L"Port", 8090, iniPath);
+        ::GetPrivateProfileStringW(L"Shop", L"ScriptPath", L"/shop", source.ScriptPath, 128, iniPath);
+        ::GetPrivateProfileStringW(L"Shop", L"BannerPath", L"/shop-banner", source.BannerPath, 128, iniPath);
         return source;
     }
 
