@@ -239,7 +239,12 @@ add_executable(Main
 target_compile_features(Main PUBLIC cxx_std_20)
 target_link_libraries(Main PRIVATE MuClient::MuClient)
 
-if (NOT MSVC)
+if (APPLE)
+  # Apple's ld64 spells the option -map (lowercase); -Map is a GNU-ld/lld
+  # spelling it rejects outright with "ld: unknown options: -Map".
+  set(MU_MAIN_MAP_FILE "${CMAKE_CURRENT_BINARY_DIR}/Main.map")
+  target_link_options(Main PRIVATE "-Wl,-map,${MU_MAIN_MAP_FILE}")
+elseif (NOT MSVC)
   set(MU_MAIN_MAP_FILE "${CMAKE_CURRENT_BINARY_DIR}/Main.map")
   target_link_options(Main PRIVATE "-Wl,-Map,${MU_MAIN_MAP_FILE}")
 endif()
