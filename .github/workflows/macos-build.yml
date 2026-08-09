@@ -1,0 +1,329 @@
+name: macOS Build (arm64)
+
+# Builds the native macOS client on an Apple Silicon runner: the engine, the
+# SDL3/OpenGL runtime, and the osx-arm64 Native AOT network library
+# (MUnique.Client.Library.dylib).
+#
+# Editor OFF only, unlike the Linux job. This is the build players would run,
+# and it is the first ARM build of this client in any form - keeping the matrix
+# to one configuration means a red run points at one thing.
+#
+# There is no equivalent of the Linux job's headless launch step. macOS runners
+# have no Xvfb and no software GL, so CI can prove the client builds, links and
+# loads its library - it cannot prove it draws. That verdict only comes from
+# running the artifact on a real Mac.
+
+on:
+  push:
+    # master is the branch on our snapshot repository (upstream's is main), and
+    # the snapshot is what actually reaches GitHub - the full history carries
+    # build leftovers above GitHub's 100 MB file limit. Without master here the
+    # job would never fire on the only branch we push.
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    name: build-macos (arm64)
+    # macos-15, not macos-26. The first attempt asked for macos-26 so the build
+    # would match the tester's OS, and GitHub cancelled the job after 15 minutes
+    # with "The job was not acquired by Runner of type hosted even after
+    # multiple attempts" - that pool is too thin to rely on. macos-15 is the
+    # established Apple Silicon image with the largest pool.
+    #
+    # Building against the older SDK is fine: a binary built on macOS 15 runs on
+    # macOS 26. The reverse - newer SDK, older OS - is what breaks, and we are
+    # not doing that.
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build tools and dependencies
+        # cmake ships on the runner image; ninja, glew and jpeg-turbo do not.
+        # OpenGL and GLU come from the system framework, so nothing to install
+        # for those.
+        run: |
+          # coreutils: for gtimeout in the render step - macOS ships no timeout
+          # command, and without a watchdog a hung client would eat the 6-hour
+          # job cap in billable minutes.
+          brew install ninja glew jpeg-turbo pkg-config coreutils
+
+      - name: Install .NET SDK 10
+        # Builds the osx-arm64 Native AOT client library (.dylib) and, at
+        # configure time, restores the OpenMU packet XML the wire-size codegen
+        # reads. Native AOT cannot cross-compile between operating systems, so
+        # this has to be the macOS SDK.
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Configure CMake
+        # jpeg-turbo is keg-only, so its prefix is not on the default search
+        # path and find_library would miss it.
+        run: |
+          cmake -S . -B build-macos -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DENABLE_EDITOR=OFF \
+            -DBUILD_TESTING=ON \
+            -DCMAKE_PREFIX_PATH="$(brew --prefix jpeg-turbo);$(brew --prefix glew)"
+
+      - name: Build wire-size guards
+        run: cmake --build build-macos --target GenWireSizes
+
+      - name: Build client (engine + osx-arm64 .dylib) and tests
+        # -k 0: keep compiling past failures so one run surfaces EVERY broken
+        # translation unit, not just the first. Porting fixes land in batches
+        # instead of one 25-minute round trip per error. The step still fails
+        # when anything failed - this changes reporting, not the verdict.
+        run: cmake --build build-macos -j"$(sysctl -n hw.ncpu)" -- -k 0
+
+      - name: Run unit tests
+        run: ctest --test-dir build-macos --output-on-failure
+
+      - name: Bundle runtime dylibs and re-sign
+        # The build machine resolves turbojpeg from Homebrew; a player's Mac
+        # has no Homebrew, so the raw binary would die in dyld before the first
+        # frame. Ship the dylib next to the executable and point the load
+        # command at @loader_path. install_name_tool invalidates the linker's
+        # ad-hoc signature, and an invalidly-signed arm64 binary is killed on
+        # launch - re-sign, ad hoc, as the final touch.
+        working-directory: build-macos/src
+        run: |
+          TJ=$(otool -L Main | awk '/turbojpeg/{print $1; exit}')
+          echo "turbojpeg resolved at build time: $TJ"
+          cp "$TJ" .
+          TJB=$(basename "$TJ")
+          install_name_tool -change "$TJ" "@loader_path/$TJB" Main
+          codesign -s - -f Main
+          echo "--- load commands after fixup ---"
+          otool -L Main
+          # Fail loudly if anything still points into Homebrew.
+          if otool -L Main | grep -q /opt/homebrew; then
+            echo "Main still depends on Homebrew paths"; exit 1
+          fi
+          if otool -L MUnique.Client.Library.dylib | grep -q /opt/homebrew; then
+            echo "client library depends on Homebrew paths"; exit 1
+          fi
+
+      - name: Verify the client library and executable are native arm64
+        # A silent x86_64 build would still run under Rosetta and hide the fact
+        # that the ARM port never happened, so assert the architecture.
+        run: |
+          dylib="build-macos/src/MUnique.Client.Library.dylib"
+          test -f "$dylib"
+          file "$dylib" | grep -q "arm64"
+          file "build-macos/src/Main" | grep -q "arm64"
+          otool -L "$dylib"
+
+      - name: Fetch game assets
+        # The repository carries source only, so the engine has nothing to draw
+        # until the content is next to the executable. Pull the same archive the
+        # Mac testers download - one URL, one source of truth.
+        run: |
+          curl -fL --retry 3 -o /tmp/mu-assets.tar.gz \
+            https://play.mu-ai.online/launcher/mac/mu-mac-files.tar.gz
+          tar -xzf /tmp/mu-assets.tar.gz -C build-macos/src
+          ls build-macos/src | head
+
+      - name: Play the game end to end (autotest)
+        # The real verdict for the Mac client: log in against the live server,
+        # enter the world and open the cash shop, with no human and no Mac.
+        # Best effort - a CI runner that cannot give a GL context must not
+        # redden a good build. The PASS/FAIL line below is the signal.
+        continue-on-error: true
+        working-directory: build-macos/src
+        env:
+          MU_AUTOTEST: "1"
+          MU_AUTOTEST_USER: ${{ secrets.MACTEST_USER }}
+          MU_AUTOTEST_PASS: ${{ secrets.MACTEST_PASS }}
+        run: |
+          gtimeout 240 ./Main > autotest.log 2>&1 || true
+          echo "--- autotest trace ---"
+          grep '\[autotest\]' autotest.log || echo "(no autotest output - did the client start?)"
+          echo "--- screenshots ---"
+          for f in autotest-*.ppm; do
+            [ -f "$f" ] || continue
+            sips -s format png "$f" --out "${f%.ppm}.png" >/dev/null 2>&1 || true
+            ls -la "$f"
+          done
+          if grep -q '\[autotest\] PASS' autotest.log; then
+            echo "AUTOTEST PASSED"
+          else
+            echo "AUTOTEST DID NOT PASS - see the trace above and the uploaded screenshots"
+          fi
+
+      - name: Try to render a frame
+        # The engine can dump the Nth presented frame to a PPM (Winmain.cpp:193).
+        # Whether this produces anything on a CI Mac is exactly the open
+        # question: the runner may have no window server or GL context to give.
+        # Best effort on purpose - a machine that cannot draw must not turn a
+        # successful build red. Either outcome is information: a frame here means
+        # the renderer works on Apple Silicon without waiting on a human tester.
+        continue-on-error: true
+        working-directory: build-macos/src
+        run: |
+          # gtimeout (brew coreutils), not timeout - macOS has no timeout
+          # command, and the first run of this step silently never launched the
+          # client because of exactly that.
+          MU_CAPTURE_FRAME=120 MU_CAPTURE_PATH=frame.ppm gtimeout 120 ./Main > client-stdout.log 2>&1 || true
+          echo "--- client output (tail) ---"
+          tail -40 client-stdout.log || true
+          echo "--- MuError.log ---"
+          tail -40 MuError.log 2>/dev/null || echo "(no MuError.log)"
+          if [ -f frame.ppm ]; then
+            echo "RENDERED A FRAME"
+            sips -s format png frame.ppm --out frame.png >/dev/null 2>&1 || true
+            ls -la frame.ppm frame.png 2>/dev/null
+          else
+            echo "no frame - the runner gave no usable GL context, or the client exited early"
+          fi
+
+      - name: Build the .dmg installer
+        # A Mac-shaped delivery: a tiny .app whose executable is a bootstrap
+        # script. On first launch it downloads the game content into
+        # ~/Library/Application Support/MU-AI - a user-writable location - and
+        # always refreshes the binaries there from the bundle, then launches
+        # the game from that directory.
+        #
+        # This shape is load-bearing, not cosmetic. The engine writes its
+        # config, logs and shop cache next to the executable; a bundle in
+        # /Applications is effectively read-only (App Translocation plus
+        # signature invalidation), so the game must NOT run from inside the
+        # bundle. Running from Application Support sidesteps translocation
+        # entirely and keeps every current engine write-path working unchanged.
+        # It also gives us updates for free: a new .app means new binaries
+        # copied over on next launch, while config.ini and settings survive.
+        working-directory: build-macos/src
+        run: |
+          APP="MU AI.app"
+          rm -rf "$APP" dist MU-AI.dmg
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+          cp Main MUnique.Client.Library.dylib libturbojpeg.0.dylib "$APP/Contents/MacOS/"
+
+          cat > "$APP/Contents/MacOS/MUAI" <<'BOOTSTRAP'
+          #!/bin/bash
+          BASE="https://play.mu-ai.online/launcher/mac"
+          DIR="$HOME/Library/Application Support/MU-AI"
+          APPDIR="$(cd "$(dirname "$0")" && pwd)"
+          mkdir -p "$DIR"
+
+          # Content updates: the server publishes a version stamp next to the
+          # asset archive, bumped by the publish pipeline whenever client
+          # content changes. A mismatch (or a fresh install - no local stamp)
+          # re-downloads the archive, so Mac players track content updates the
+          # way Windows players do through the launcher. The player's own
+          # config.ini is never overwritten on an update, only seeded on first
+          # install. If the stamp check itself fails (offline), an existing
+          # install still launches - the game itself is the judge of whether
+          # the server will have it.
+          REMOTE_VER="$(curl -fsS --max-time 10 "$BASE/assets-version.txt" 2>/dev/null || true)"
+          LOCAL_VER="$(cat "$DIR/.assets-version" 2>/dev/null || true)"
+          if [ ! -d "$DIR/Data" ] || { [ -n "$REMOTE_VER" ] && [ "$REMOTE_VER" != "$LOCAL_VER" ]; }; then
+            osascript -e 'display notification "מוריד את קבצי המשחק (~560MB). המשחק ייפתח לבד כשההורדה תסתיים." with title "MU AI"' >/dev/null 2>&1 || true
+            if ! curl -fL -C - -o "$DIR/mu-files.tar.gz" "$BASE/mu-mac-files-lite.tar.gz"; then
+              if [ -d "$DIR/Data" ]; then
+                rm -f "$DIR/mu-files.tar.gz"
+              else
+                osascript -e 'display dialog "ההורדה נכשלה — בדקו את חיבור האינטרנט ונסו שוב." with title "MU AI" buttons {"סגור"} default button 1' >/dev/null 2>&1 || true
+                exit 1
+              fi
+            else
+              KEEP_CONFIG=""
+              [ -f "$DIR/config.ini" ] && KEEP_CONFIG="--exclude=config.ini"
+              tar -xzf "$DIR/mu-files.tar.gz" -C "$DIR" $KEEP_CONFIG && rm -f "$DIR/mu-files.tar.gz"
+              [ -n "$REMOTE_VER" ] && printf '%s' "$REMOTE_VER" > "$DIR/.assets-version"
+            fi
+          fi
+
+          # Refresh the binaries only when they actually changed: this script
+          # runs quarantined (the app came from a browser), so every file it
+          # writes inherits quarantine - and an unconditional copy meant
+          # Gatekeeper re-blocked Main on EVERY launch, not once. cmp keeps the
+          # already-approved binary byte-identical across launches, and the
+          # xattr strip clears the flag from fresh copies so one approval of
+          # the app is the only gate the player ever sees.
+          for f in Main MUnique.Client.Library.dylib libturbojpeg.0.dylib; do
+            if ! cmp -s "$APPDIR/$f" "$DIR/$f"; then
+              cp -f "$APPDIR/$f" "$DIR/"
+              xattr -d com.apple.quarantine "$DIR/$f" 2>/dev/null || true
+            fi
+          done
+          chmod +x "$DIR/Main"
+          cd "$DIR"
+          exec ./Main
+          BOOTSTRAP
+          chmod +x "$APP/Contents/MacOS/MUAI"
+
+          cat > "$APP/Contents/Info.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleExecutable</key><string>MUAI</string>
+            <key>CFBundleIdentifier</key><string>online.mu-ai.client</string>
+            <key>CFBundleName</key><string>MU AI</string>
+            <key>CFBundleDisplayName</key><string>MU AI</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>1.0.0</string>
+            <key>CFBundleVersion</key><string>1</string>
+            <key>CFBundleIconFile</key><string>AppIcon</string>
+            <key>LSMinimumSystemVersion</key><string>12.0</string>
+            <key>LSApplicationCategoryType</key><string>public.app-category.games</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict>
+          </plist>
+          PLIST
+
+          # Icon, best effort: converted from the Windows resource icon. An
+          # icon failure must never redden a working build.
+          (
+            set -e
+            ICO="$GITHUB_WORKSPACE/src/source/App/Platform/Windows/icon1.ico"
+            mkdir icon.iconset
+            sips -s format png -z 1024 1024 "$ICO" --out icon.iconset/icon_512x512@2x.png
+            for s in 16 32 128 256 512; do
+              sips -z $s $s icon.iconset/icon_512x512@2x.png --out icon.iconset/icon_${s}x${s}.png
+              sips -z $((s*2)) $((s*2)) icon.iconset/icon_512x512@2x.png --out icon.iconset/icon_${s}x${s}@2x.png
+            done
+            iconutil -c icns icon.iconset -o "$APP/Contents/Resources/AppIcon.icns"
+          ) || echo "icon conversion failed - shipping without a custom icon"
+
+          codesign -s - --force --deep "$APP"
+
+          mkdir dist
+          cp -R "$APP" dist/
+          ln -s /Applications dist/Applications
+          hdiutil create -volname "MU AI" -srcfolder dist -ov -format UDZO MU-AI.dmg
+          ls -la MU-AI.dmg
+
+      - name: Upload client binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: mu-client-macos-arm64
+          path: |
+            build-macos/src/Main
+            build-macos/src/MUnique.Client.Library.dylib
+            build-macos/src/libturbojpeg*.dylib
+            build-macos/src/MU-AI.dmg
+          if-no-files-found: error
+
+      - name: Upload the rendered frame
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: mu-macos-frame
+          path: |
+            build-macos/src/frame.png
+            build-macos/src/frame.ppm
+            build-macos/src/autotest-*.png
+            build-macos/src/autotest-*.ppm
+            build-macos/src/autotest.log
+            build-macos/src/MuError.log
+            build-macos/src/client-stdout.log
+          if-no-files-found: ignore
