@@ -930,7 +930,23 @@ void LoadWaveFile(ESound Buffer, const wchar_t* strFileName, int BufferChannel, 
     // predecode=true: these are short effects played repeatedly, and decoding
     // once up front keeps the mixer callback free of file work.
     buf.audio = MIX_LoadAudio_IO(Mixer(), io, /*predecode=*/true, /*closeio=*/true);
-    if (!buf.audio) return;
+    if (!buf.audio)
+    {
+        // Silence with no explanation is what cost a build round trip here
+        // already; say why on the first failure at least.
+        static bool reported = false;
+        if (!reported)
+        {
+            reported = true;
+            std::fprintf(stderr, "[sfx] MIX_LoadAudio failed for %ls: %s "
+                                 "(fmt=%u ch=%u rate=%u bits=%u bytes=%d)\n",
+                         strFileName, SDL_GetError(),
+                         format.wFormatTag, format.nChannels,
+                         format.nSamplesPerSec, format.wBitsPerSample, dataSize);
+            std::fflush(stderr);
+        }
+        return;
+    }
 
     buf.is3D = Enable3DSound;
     const int voices = std::clamp(BufferChannel, 1, 8);
@@ -956,8 +972,22 @@ HRESULT PlayBuffer(ESound Buffer, OBJECT* Object, BOOL bLooped)
 
     buf.source[index] = buf.is3D ? Object : nullptr;
     MIX_SetTrackGain(voice, buf.gain * g_masterGain);
-    // -1 loops forever, 0 plays once - the same two cases the callers use.
-    MIX_PlayTrack(voice, bLooped ? -1 : 0);
+
+    // MIX_PlayTrack's second argument is a PROPERTIES id, not a loop count -
+    // passing -1 there was an invalid property set, so every play request
+    // failed and the client was silent. Loop count travels as a property.
+    if (bLooped)
+    {
+        const SDL_PropertiesID props = SDL_CreateProperties();
+        if (props)
+        {
+            SDL_SetNumberProperty(props, MIX_PROP_PLAY_LOOPS_NUMBER, -1);  // forever
+            MIX_PlayTrack(voice, props);
+            SDL_DestroyProperties(props);
+            return S_OK;
+        }
+    }
+    MIX_PlayTrack(voice, 0);   // 0 = no options = play once
     return S_OK;
 }
 
