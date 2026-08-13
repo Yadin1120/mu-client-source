@@ -53,8 +53,18 @@ private:
         CloseShop,      // put it away before opening the next window
         OpenMuPass,     // open the MU Pass window
         WindowTour,     // walk the rest of the player-facing windows
+        TalkToNpc,      // pick the next town NPC that is in view and hail it
+        NpcDialogue,    // photograph whatever window it answered with
         Done,
         Failed,
+    };
+
+    // One entry per NPC the town tour hails. Same shape as TourEntry, but keyed
+    // by the monster/NPC number the server assigns rather than a window id.
+    struct NpcEntry
+    {
+        int monsterIndex;
+        const char* label;
     };
 
     void EnterStep(Step step, const char* label);
@@ -73,4 +83,9 @@ private:
     int m_loginAttempts = 0;
     int m_tourIndex = 0;
     double m_tourOpenedMs = 0.0;
+    int m_npcIndex = 0;
+    // WorldTime of the pending capture request, 0 when none is outstanding.
+    // A window must stay open for a few frames after Capture() or the shot
+    // lands on the frame after it closed - see CAPTURE_HOLD_MS.
+    double m_capturedMs = 0.0;
 };

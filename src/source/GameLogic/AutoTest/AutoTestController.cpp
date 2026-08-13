@@ -49,6 +49,13 @@ namespace
     // count packet, then one packet per item), so it gets its own window rather
     // than being judged on the first frame it is looked at.
     constexpr double STORAGE_SETTLE_MS = 5000.0;
+    // A capture is a request, not an action: RequestFrameCapture only marks a
+    // path, and the framebuffer is written when the frame is presented. Hiding
+    // the window in the same Update() therefore photographed the frame AFTER it
+    // was gone - every window-tour screenshot up to 13/08/2026 was of an empty
+    // world, which is exactly how a broken tour looks like a working one. Hold
+    // the window open a few frames past the request before putting it away.
+    constexpr double CAPTURE_HOLD_MS = 400.0;
     // First product tile in the cash shop, in the 640x480 reference space the
     // UI is authored in (the renderer scales it to the real window).
     constexpr int SHOP_FIRST_ITEM_X = 372;
@@ -71,6 +78,26 @@ namespace
         { SEASON3B::INTERFACE_CHATLOGWINDOW,    "chatlog" },
         { SEASON3B::INTERFACE_MINI_MAP,         "minimap" },
     };
+
+    // The town NPCs worth hailing, by the server's NPC number. Their dialogue is
+    // the longest prose in the game and the only place a player reads full
+    // sentences, which is exactly where Hebrew line breaking shows up broken -
+    // and no window in kTour above reaches it, because these need an NPC.
+    //
+    // Whoever is out of view is skipped rather than walked to: every one of
+    // these stands inside or beside the Lorencia spawn square, so a tour that
+    // only hails what it can already see costs nothing and needs no pathfinding.
+    // If a future entry sits further out, that is when walking earns its keep.
+    const AutoTestController::NpcEntry kNpcTour[] = {
+        { 371, "npc-leo" },             // Leo The Helper - the tutorial guide
+        { 253, "npc-potion-girl" },     // Amy
+        { 250, "npc-merchant" },        // Wandering Merchant Harold
+        { 246, "npc-weapons" },         // Zienna
+        { 257, "npc-elf-soldier" },     // the blessing NPC
+    };
+    // A hail is a round trip; give the server time to answer before deciding
+    // this NPC had nothing to say.
+    constexpr double NPC_ANSWER_MS = 4000.0;
 
     const wchar_t* EnvW(const char* name, wchar_t* buffer, size_t count)
     {
@@ -130,7 +157,7 @@ void AutoTestController::Fail(const char* why)
 
 void AutoTestController::Pass()
 {
-    std::fprintf(stderr, "[autotest] PASS: logged in, entered the world, cash shop (with its storage list) and MU Pass opened\n");
+    std::fprintf(stderr, "[autotest] PASS: logged in, entered the world, cash shop (with its storage list), MU Pass and the town NPCs\n");
     std::fflush(stderr);
     m_step = Step::Done;
 }
@@ -427,7 +454,16 @@ void AutoTestController::Update()
         // Purely local, unlike the shop: the T key just toggles the window.
         if (g_pNewUISystem->IsVisible(SEASON3B::INTERFACE_MUPASS))
         {
-            Capture("mupass");
+            if (m_capturedMs == 0.0)
+            {
+                Capture("mupass");
+                m_capturedMs = WorldTime;
+                break;
+            }
+            if (WorldTime - m_capturedMs < CAPTURE_HOLD_MS)
+                break;
+
+            m_capturedMs = 0.0;
             g_pNewUISystem->Hide(SEASON3B::INTERFACE_MUPASS);
             m_tourOpenedMs = WorldTime;
             EnterStep(Step::WindowTour, "touring the remaining windows");
@@ -445,7 +481,7 @@ void AutoTestController::Update()
         // audit.
         if (m_tourIndex >= static_cast<int>(_countof(kTour)))
         {
-            Pass();
+            EnterStep(Step::TalkToNpc, "hailing the town NPCs");
             break;
         }
         const TourEntry& entry = kTour[m_tourIndex];
@@ -456,7 +492,15 @@ void AutoTestController::Update()
         }
         if (g_pNewUISystem->IsVisible(entry.interfaceId))
         {
-            Capture(entry.label);
+            if (m_capturedMs == 0.0)
+            {
+                Capture(entry.label);
+                m_capturedMs = WorldTime;
+                break;
+            }
+            if (WorldTime - m_capturedMs < CAPTURE_HOLD_MS)
+                break;
+
             g_pNewUISystem->Hide(entry.interfaceId);
         }
         else
@@ -464,9 +508,81 @@ void AutoTestController::Update()
             std::fprintf(stderr, "[autotest] window '%s' did not open - skipping\n", entry.label);
             std::fflush(stderr);
         }
+        m_capturedMs = 0.0;
         ++m_tourIndex;
         m_tourOpenedMs = WorldTime;
         m_stepStartedMs = WorldTime;   // each window gets its own watchdog
+        break;
+    }
+
+    case Step::TalkToNpc:
+    {
+        // NPC prose is the longest running text in the game, and the only place
+        // a player reads whole sentences - so it is where a broken line-breaker
+        // shows itself. A player reported exactly that on macOS: the welcome
+        // speech came out shredded into two- and three-letter lines while every
+        // other window looked right. None of the windows above can reach that
+        // text, because it only arrives in answer to hailing an NPC.
+        if (m_npcIndex >= static_cast<int>(_countof(kNpcTour)))
+        {
+            Pass();
+            break;
+        }
+
+        const NpcEntry& npc = kNpcTour[m_npcIndex];
+        const int index = FindCharacterIndexByMonsterIndex(npc.monsterIndex);
+        if (index >= MAX_CHARACTERS_CLIENT)
+        {
+            // Out of view. Say which one, so a tour that quietly covers less
+            // than it appears to is visible in the log rather than implied.
+            std::fprintf(stderr, "[autotest] NPC '%s' is not in view - skipping\n", npc.label);
+            std::fflush(stderr);
+            ++m_npcIndex;
+            m_stepStartedMs = WorldTime;
+            break;
+        }
+
+        SocketClient->ToGameServer()->SendTalkToNpcRequest(
+            static_cast<uint16_t>(CharactersClient[index].Key));
+        EnterStep(Step::NpcDialogue, npc.label);
+        break;
+    }
+
+    case Step::NpcDialogue:
+    {
+        const NpcEntry& npc = kNpcTour[m_npcIndex];
+        // Merchants answer with their shop, quest givers with the dialogue box.
+        // Photograph whichever came up - both are full of Hebrew, and the shop
+        // is a useful shot in its own right.
+        const bool dialogue = g_pNewUISystem->IsVisible(SEASON3B::INTERFACE_NPC_DIALOGUE);
+        const bool shop = g_pNewUISystem->IsVisible(SEASON3B::INTERFACE_NPCSHOP);
+        if (dialogue || shop)
+        {
+            if (m_capturedMs == 0.0)
+            {
+                Capture(npc.label);
+                m_capturedMs = WorldTime;
+                break;
+            }
+            if (WorldTime - m_capturedMs < CAPTURE_HOLD_MS)
+                break;
+
+            g_pNewUISystem->Hide(dialogue ? SEASON3B::INTERFACE_NPC_DIALOGUE
+                                          : SEASON3B::INTERFACE_NPCSHOP);
+        }
+        else if (ElapsedMs() <= NPC_ANSWER_MS)
+        {
+            break;   // still waiting on the server
+        }
+        else
+        {
+            std::fprintf(stderr, "[autotest] NPC '%s' answered with no window\n", npc.label);
+            std::fflush(stderr);
+        }
+
+        m_capturedMs = 0.0;
+        ++m_npcIndex;
+        EnterStep(Step::TalkToNpc, "hailing the town NPCs");
         break;
     }
 
