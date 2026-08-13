@@ -5,6 +5,7 @@
 
 #include "Dotnet/Connection.h"
 #include "Network/Server/CSMapServer.h"
+#include <cstdint>
 #include <span>
 #include <typeinfo>
 
@@ -3274,6 +3275,14 @@ typedef struct
 
 #ifdef KJH_ADD_INGAMESHOP_UI_SYSTEM
 
+// ‏שדות הפקטות כאן היו מוגדרים כ-long, וזה שבר את חנות המזומן **במק בלבד**:
+// ‏long הוא 4 בייט בחלונות (LLP64) ו-8 בייט במק/לינוקס (LP64). מבנה רשומת המחסן
+// ‏(0xD2)(0x0D) יצא 53 בייט במקום 33, כל שדה אחרי הראשון נקרא מהמקום הלא נכון,
+// ‏ו-chItemType — שהקוד ב-NewUIInGameShop.cpp דורש שיהיה 'P' — יצא זבל מעבר לסוף
+// ‏הפקטה. התוצאה: קנייה מצליחה, הכסף יורד, והמחסן ותיק המתנות נשארים ריקים.
+// ‏לכן כל שדה על הרשת חייב טיפוס ברוחב קבוע (int32_t) ולעולם לא long.
+// ‏ה-static_assert אחרי pragma pack(pop) שומר שזה לא יחזור.
+
 #pragma pack(push, 1)
 
 //----------------------------------------------------------------------------
@@ -3327,9 +3336,9 @@ typedef struct
 {
     PBMSG_HEADER2		h;
 
-    long				lBuyItemPackageSeq;
-    long				lBuyItemDisplaySeq;
-    long				lBuyItemPriceSeq;
+    int32_t				lBuyItemPackageSeq;
+    int32_t				lBuyItemDisplaySeq;
+    int32_t				lBuyItemPriceSeq;
     WORD				wItemCode;
 }PMSG_CASHSHOP_BUYITEM_REQ, * LPPMSG_CASHSHOP_BUYITEM_REQ;
 
@@ -3341,7 +3350,7 @@ typedef struct
     PBMSG_HEADER2		h;
 
     BYTE				byResultCode;
-    long				lItemLeftCount;
+    int32_t				lItemLeftCount;
 }PMSG_CASHSHOP_BUYITEM_ANS, * LPPMSG_CASHSHOP_BUYITEM_ANS;
 
 
@@ -3353,7 +3362,7 @@ typedef struct
     PBMSG_HEADER2		h;
 
     BYTE				byResultCode;
-    long				lItemLeftCount;
+    int32_t				lItemLeftCount;
     double				dLimitedCash;
 }PMSG_CASHSHOP_GIFTSEND_ANS, * LPPMSG_CASHSHOP_GIFTSEND_ANS;
 
@@ -3386,11 +3395,11 @@ typedef struct
 {
     PBMSG_HEADER2		h;
 
-    long				lStorageIndex;
-    long				lItemSeq;
-    long				lStorageGroupCode;
-    long				lProductSeq;
-    long				lPriceSeq;
+    int32_t				lStorageIndex;
+    int32_t				lItemSeq;
+    int32_t				lStorageGroupCode;
+    int32_t				lProductSeq;
+    int32_t				lPriceSeq;
     double				dCashPoint;
     char				chItemType;
 }PMSG_CASHSHOP_STORAGELIST, * LPPMSG_CASHSHOP_STORAGELIST;
@@ -3402,11 +3411,11 @@ typedef struct
 {
     PBMSG_HEADER2		h;
 
-    long				lStorageIndex;
-    long				lItemSeq;
-    long				lStorageGroupCode;
-    long				lProductSeq;
-    long				lPriceSeq;
+    int32_t				lStorageIndex;
+    int32_t				lItemSeq;
+    int32_t				lStorageGroupCode;
+    int32_t				lProductSeq;
+    int32_t				lPriceSeq;
     double				dCashPoint;
     char				chItemType;
 
@@ -3455,7 +3464,7 @@ typedef struct
 {
     PBMSG_HEADER2		h;
 
-    long				lPackageSeq;
+    int32_t				lPackageSeq;
 }PMSG_CASHSHOP_ITEMBUY_LEFT_COUNT_REQ, * LPPMSG_CASHSHOP_ITEMBUY_LEFT_COUNT_REQ;
 
 //----------------------------------------------------------------------------
@@ -3465,8 +3474,8 @@ typedef struct
 {
     PBMSG_HEADER2		h;
 
-    long				lPackageSeq;
-    long				lLeftCount;
+    int32_t				lPackageSeq;
+    int32_t				lLeftCount;
 }PMSG_CASHSHOP_ITEMBUY_LEFT_COUNT_ANS, * LPPMSG_CASHSHOP_ITEMBUY_LEFT_COUNT_ANS;
 
 //----------------------------------------------------------------------------
@@ -3476,8 +3485,8 @@ typedef struct
 {
     PBMSG_HEADER2		h;
 
-    long				lStorageSeq;
-    long				lStorageItemSeq;
+    int32_t				lStorageSeq;
+    int32_t				lStorageItemSeq;
     char				chStorageItemType;
 }PMSG_CASHSHOP_STORAGE_ITEM_THROW_REQ, * LPPMSG_CASHSHOP_STORAGE_ITEM_THROW_REQ;
 
@@ -3498,8 +3507,8 @@ typedef struct
 {
     PBMSG_HEADER2		h;
 
-    long				lStorageSeq;
-    long				lStorageItemSeq;
+    int32_t				lStorageSeq;
+    int32_t				lStorageItemSeq;
 
     WORD				wItemCode;
     char				chStorageItemType;
@@ -3534,7 +3543,7 @@ typedef struct
 {
     PBMSG_HEADER2			h;
 
-    long				lEventCategorySeq;
+    int32_t				lEventCategorySeq;
 }PMSG_CASHSHOP_EVENTITEM_REQ, * LPPMSG_CASHSHOP_EVENTITEM_REQ;
 
 //----------------------------------------------------------------------------
@@ -3551,7 +3560,7 @@ typedef struct
 {
     PBMSG_HEADER2			h;
 
-    long				lPackageSeq[INGAMESHOP_DISPLAY_ITEMLIST_SIZE];
+    int32_t				lPackageSeq[INGAMESHOP_DISPLAY_ITEMLIST_SIZE];
 }PMSG_CASHSHOP_EVENTITEM_LIST, * LPPMSG_CASHSHOP_EVENTITEM_LIST;
 
 typedef struct
@@ -3564,6 +3573,21 @@ typedef struct
 }PMSG_CASHSHOP_BANNER_UPDATE, * LPPMSG_CASHSHOP_BANNER_UPDATE;
 
 #pragma pack(pop)
+
+// ‏שמירה על גדלי הפקטות של חנות המזומן, בכל פלטפורמה.
+// ‏המחולל האוטומטי (wire_sizes.generated.h) קורא את ה-XML של אפסטרים ב-NuGet, ופקטות
+// ‏ה-0xD2 שנוספו כאן פשוט לא קיימות שם — לכן הן נשמרות ידנית. המספרים מגיעים מתיעוד
+// ‏הפקטות בשרת (‏server/docs/Packets/C1-D2-*_by-server.md) והם אורך הפקטה על החוט.
+// ‏אי-התאמה כאן = הקליינט קורא שדות מהיסט שגוי בשקט, בדיוק כמו באג ה-long של המק.
+static_assert(sizeof(PMSG_CASHSHOP_CASHPOINT_ANS) == 45, "(0xD2)(0x01) CashShopPointInfo");
+static_assert(sizeof(PMSG_CASHSHOP_SHOPOPEN_ANS) == 5, "(0xD2)(0x02) CashShopOpenResult");
+static_assert(sizeof(PMSG_CASHSHOP_BUYITEM_ANS) == 9, "(0xD2)(0x03) CashShopBuyResult");
+static_assert(sizeof(PMSG_CASHSHOP_STORAGECOUNT) == 12, "(0xD2)(0x06) CashShopStorageCount");
+static_assert(sizeof(PMSG_CASHSHOP_STORAGE_ITEM_THROW_ANS) == 5, "(0xD2)(0x0A) CashShopDeleteStorageItemResult");
+static_assert(sizeof(PMSG_CASHSHOP_STORAGE_ITEM_USE_ANS) == 5, "(0xD2)(0x0B) CashShopItemUseResult");
+static_assert(sizeof(PMSG_CASHSHOP_VERSION_UPDATE) == 10, "(0xD2)(0x0C) CashShopVersionUpdate");
+static_assert(sizeof(PMSG_CASHSHOP_STORAGELIST) == 33, "(0xD2)(0x0D) CashShopStorageItem");
+static_assert(sizeof(PMSG_CASHSHOP_EVENTITEM_COUNT) == 6, "(0xD2)(0x13) CashShopEventItemCount");
 
 #endif // KJH_ADD_INGAMESHOP_UI_SYSTEM
 
@@ -3582,7 +3606,7 @@ typedef struct
 
     WORD				wItemCode;
     WORD				wItemSlotIndex;
-    long				lExpireDate;
+    int32_t				lExpireDate;
 }PMSG_PERIODITEMEX_ITEMLIST, * LPPMSG_PERIODITEMEX_ITEMLIST;
 
 #endif // KJH_ADD_PERIOD_ITEM_SYSTEM
