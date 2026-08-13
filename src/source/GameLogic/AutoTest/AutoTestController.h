@@ -1,4 +1,5 @@
-// Unattended end-to-end self-test: log in, enter the world, open the cash shop.
+// Unattended end-to-end self-test: log in, enter the world, open the cash shop
+// and assert its storage list decoded correctly.
 //
 // Why this exists: the macOS client can only be judged by a human with a Mac,
 // and that turns every fix into a day of waiting on someone else's screen. This
@@ -48,6 +49,7 @@ private:
         Settle,         // let the hero come to rest inside the safe zone
         OpenShop,       // request the cash shop
         ShopItemHover,  // park the cursor on a product so its tooltip renders
+        CheckStorage,   // the storage list decoded as many rows as were announced
         CloseShop,      // put it away before opening the next window
         OpenMuPass,     // open the MU Pass window
         WindowTour,     // walk the rest of the player-facing windows

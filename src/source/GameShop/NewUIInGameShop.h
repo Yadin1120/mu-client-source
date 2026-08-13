@@ -204,6 +204,15 @@ namespace SEASON3B
         void StorageNextPage();
         void UpdateStorageItemList();
 
+        // ‏שני המספרים שמאפשרים לבדוק את המחסן בלי עין אנושית, ובלי לדעת
+        // ‏מראש מה אמור להיות בו: השרת מכריז בפקטת המונה (0x06) כמה פריטים
+        // ‏יש בעמוד, ואז שולח פקטה נפרדת (0x0D) לכל אחד מהם. שתי הפקטות
+        // ‏מפוענחות במסלולים שונים לגמרי, ולכן **פער בין השניים הוא תמיד
+        // ‏באג פענוח** — בדיוק כך התגלה שמבנה הפקטה יצא 53 בייט במקום 33
+        // ‏במק, והמחסן נראה ריק אחרי קנייה מוצלחת. ראה AutoTestController.
+        int GetStorageExpectedRowCount() const { return m_iStorageCurrentPageItemCnt; }
+        int GetStorageActualRowCount() { return m_StorageItemListBox.GetLineNum(); }
+
         void InitBanner(wchar_t* pszFileName, wchar_t* pszBannerURL);
         void ReleaseBanner();
 

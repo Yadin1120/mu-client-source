@@ -45,6 +45,10 @@ namespace
     // Let a freshly shown window lay itself out before photographing it.
     constexpr double WINDOW_SETTLE_MS = 1200.0;
     constexpr double HOVER_SETTLE_MS = 1200.0;
+    // The storage list is a round trip to the server (request on shop open, a
+    // count packet, then one packet per item), so it gets its own window rather
+    // than being judged on the first frame it is looked at.
+    constexpr double STORAGE_SETTLE_MS = 5000.0;
     // First product tile in the cash shop, in the 640x480 reference space the
     // UI is authored in (the renderer scales it to the real window).
     constexpr int SHOP_FIRST_ITEM_X = 372;
@@ -126,7 +130,7 @@ void AutoTestController::Fail(const char* why)
 
 void AutoTestController::Pass()
 {
-    std::fprintf(stderr, "[autotest] PASS: logged in, entered the world, cash shop and MU Pass opened\n");
+    std::fprintf(stderr, "[autotest] PASS: logged in, entered the world, cash shop (with its storage list) and MU Pass opened\n");
     std::fflush(stderr);
     m_step = Step::Done;
 }
@@ -352,9 +356,60 @@ void AutoTestController::Update()
         if (ElapsedMs() > HOVER_SETTLE_MS)
         {
             Capture("shop-item-tooltip");
-            EnterStep(Step::CloseShop, "closing the cash shop");
+            EnterStep(Step::CheckStorage, "checking the cash shop storage list");
         }
         break;
+
+    case Step::CheckStorage:
+    {
+        // The one check here that a screenshot cannot make, and the reason this
+        // step exists: on 13/08/2026 a Mac player bought an item, was charged,
+        // and found an empty storage. Nothing was lost - the client decoded the
+        // per-item packet at the wrong offsets, because its struct used `long`
+        // (4 bytes on Windows, 8 on macOS) and came out 53 bytes against a
+        // 33-byte packet. Every screenshot of that build looks perfectly fine.
+        //
+        // What makes it catchable without knowing the account's contents: the
+        // count packet (0x06) and the item packets (0x0D) are decoded through
+        // completely separate paths, so the server's own "this page holds N
+        // items" is a free oracle for "N rows should exist". Any gap is a
+        // decoding bug, on any platform.
+        //
+        // The list is requested by the client itself on shop open, so by now it
+        // has usually landed; wait out the settle window before judging, and
+        // let the step watchdog end a run where it never arrives at all.
+        const int expected = g_pInGameShop->GetStorageExpectedRowCount();
+        const int actual = g_pInGameShop->GetStorageActualRowCount();
+        if (expected > 0 && actual >= expected)
+        {
+            std::fprintf(stderr, "[autotest] storage: %d announced, %d decoded - ok\n", expected, actual);
+            std::fflush(stderr);
+            Capture("shop-storage");
+            EnterStep(Step::CloseShop, "closing the cash shop");
+            break;
+        }
+        if (ElapsedMs() <= STORAGE_SETTLE_MS)
+        {
+            break;
+        }
+        if (expected <= 0)
+        {
+            // Not a failure, but the check proved nothing - say so loudly rather
+            // than let a green run imply the storage was verified. Fix by giving
+            // the test account a cash shop item.
+            std::fprintf(stderr, "[autotest] storage: the test account has no stored items - NOTHING VERIFIED\n");
+            std::fflush(stderr);
+            Capture("shop-storage-empty");
+            EnterStep(Step::CloseShop, "closing the cash shop");
+            break;
+        }
+        char why[160];
+        std::snprintf(why, sizeof(why),
+                      "storage list: server announced %d items on this page, the client decoded %d rows",
+                      expected, actual);
+        Fail(why);
+        break;
+    }
 
     case Step::CloseShop:
         // Tell the server the shop is closed, the way the X key does, so the
