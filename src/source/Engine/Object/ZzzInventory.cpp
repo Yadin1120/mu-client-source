@@ -2273,34 +2273,58 @@ void RenderItemInfo(int sx, int sy, ITEM* ip, bool Sell, int Inventype, bool bIt
         && !IsPersonalShopBan(ip))
     {
         {
-            int price = 0;
+            PersonalItemPrice price;
             int indexInv = g_pMyShopInventory->GetInventoryCtrl()->GetIndexByItem(ip);
             wchar_t Text[100];
 
             if (GetPersonalItemPrice(indexInv, price, g_IsPurchaseShop))
             {
-                ConvertGold(price, Text);
-                mu_swprintf(TextList[TextNum], I18N::Game::SellingPriceS, Text);
+                ConvertGold(price.amount, Text);
 
-                if (price >= 10000000)
-                    TextListColor[TextNum] = TEXT_COLOR_RED;
-                else if (price >= 1000000)
-                    TextListColor[TextNum] = TEXT_COLOR_YELLOW;
-                else if (price >= 100000)
-                    TextListColor[TextNum] = TEXT_COLOR_GREEN;
+                if (price.IsResets())
+                {
+                    mu_swprintf(TextList[TextNum], I18N::Game::SellingPriceResetsS, Text);
+
+                    // ספי הצבע של הזן (מיליונים) חסרי משמעות בריסטים, שבהם 10 זה כבר
+                    // מחיר גבוה. סולם נפרד, אחרת כל מחיר בריסטים היה מצויר לבן.
+                    if (price.amount >= 100)
+                        TextListColor[TextNum] = TEXT_COLOR_RED;
+                    else if (price.amount >= 25)
+                        TextListColor[TextNum] = TEXT_COLOR_YELLOW;
+                    else if (price.amount >= 5)
+                        TextListColor[TextNum] = TEXT_COLOR_GREEN;
+                    else
+                        TextListColor[TextNum] = TEXT_COLOR_WHITE;
+                }
                 else
-                    TextListColor[TextNum] = TEXT_COLOR_WHITE;
+                {
+                    mu_swprintf(TextList[TextNum], I18N::Game::SellingPriceS, Text);
+
+                    if (price.amount >= 10000000)
+                        TextListColor[TextNum] = TEXT_COLOR_RED;
+                    else if (price.amount >= 1000000)
+                        TextListColor[TextNum] = TEXT_COLOR_YELLOW;
+                    else if (price.amount >= 100000)
+                        TextListColor[TextNum] = TEXT_COLOR_GREEN;
+                    else
+                        TextListColor[TextNum] = TEXT_COLOR_WHITE;
+                }
+
                 TextBold[TextNum] = true;
                 TextNum++;
                 mu_swprintf(TextList[TextNum], L"\n"); TextNum++; SkipNum++;
 
-                DWORD gold = CharacterMachine->Gold;
+                // ההשוואה מול המטבע הנכון. יתרת הריסטים מגיעה בפקטת מאזן החנות
+                // ונשמרת גם כשחלון החנות סגור.
+                const bool cannotAfford = price.IsResets()
+                    ? (GetPersonalShopResetBalance() < price.amount)
+                    : ((int)CharacterMachine->Gold < price.amount);
 
-                if ((int)gold < price && g_IsPurchaseShop == PSHOPWNDTYPE_PURCHASE)
+                if (cannotAfford && g_IsPurchaseShop == PSHOPWNDTYPE_PURCHASE)
                 {
                     TextListColor[TextNum] = TEXT_COLOR_RED;
                     TextBold[TextNum] = true;
-                    mu_swprintf(TextList[TextNum], I18N::Game::YouAreShortOfZen);
+                    mu_swprintf(TextList[TextNum], price.IsResets() ? I18N::Game::YouAreShortOfResets : I18N::Game::YouAreShortOfZen);
                     TextNum++;
                     mu_swprintf(TextList[TextNum], L"\n"); TextNum++; SkipNum++;
                 }
@@ -7512,6 +7536,13 @@ bool IsPersonalShopBan(ITEM* pItem)
         || pItem->Type == ITEM_PANDA_TRANSFORMATION_RING
         || pItem->Type == ITEM_SKELETON_TRANSFORMATION_RING
         || pItem->Type == ITEM_PET_SKELETON
+
+        // חיית חד-קרן — הוחרגה כאן ב-13/08/2026 (החלטת הבעלים: חיות מחמד נסחרות).
+        //
+        // היא נפלה בין הכיסאות: שלוש החיות מופיעות ב-IsPartChargeItem, שנמצא ברשימת
+        // האיסור למטה — אבל דמון ורוח השומר מוחרגים כאן, למעלה, ולכן לא מגיעים לשם.
+        // חד-הקרן לא הוחרג, ולכן הוא היה החיה היחידה שנחסמה בפועל.
+        || pItem->Type == ITEM_PET_UNICORN
 #ifdef LJH_ADD_SYSTEM_OF_EQUIPPING_ITEM_FROM_INVENTORY
         || (g_pMyInventory->IsInvenItem(pItem->Type) && pItem->Durability == 255)
 #endif //LJH_ADD_SYSTEM_OF_EQUIPPING_ITEM_FROM_INVENTORY
@@ -11059,18 +11090,21 @@ bool IsExistUndecidedPrice()
     auto inventoryCtrl = g_pMyShopInventory->GetInventoryCtrl();
     for (int i = 0; i < MAX_PERSONALSHOP_INVEN; ++i)
     {
-        int iPrice = 0;
+        PersonalItemPrice price;
         ITEM* pItem = inventoryCtrl->GetItem(i);
         if (pItem)
         {
             bResult = false;
             int iIndex = inventoryCtrl->GetIndexByItem(pItem);
-            if (GetPersonalItemPrice(iIndex, iPrice, g_IsPurchaseShop) == false)
+            if (GetPersonalItemPrice(iIndex, price, g_IsPurchaseShop) == false)
             {
                 return true;
             }
 
-            if (iPrice <= 0)
+            // הסכום נשמר תמיד חיובי, בשני המטבעות. אם אי פעם יוחלט לקודד את המטבע
+            // בסימן — הבדיקה הזו היא המקום שבו זה יישבר בשקט: היא תסמן כל מחיר
+            // בריסטים כ"לא נקבע", והמוכר לא יוכל לפתוח את החנות בכלל.
+            if (price.amount <= 0)
             {
                 return true;
             }

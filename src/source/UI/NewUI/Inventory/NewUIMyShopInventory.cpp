@@ -1,4 +1,4 @@
-// NewUIMyShopInventory.cpp: implementation of the CNewUIMyShopInventory class.
+﻿// NewUIMyShopInventory.cpp: implementation of the CNewUIMyShopInventory class.
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
@@ -516,37 +516,48 @@ void SEASON3B::CNewUIMyShopInventory::RenderTextInfo()
         RenderText(I18N::Game::StillOpening, m_Pos.x, m_Pos.y + 200, INVENTORY_WIDTH, 0, RGBA(215, 138, 0, 255), 0x00000000, RT3_SORT_CENTER, g_hFontBold);
     }
 
+    // ההסבר על תמחור בריסטים, ברווח שמתחת לרשת הפריטים — המקום שהבעלים סימן.
+    // בלוק האזהרה שמתחתיו הוזז 14 פיקסלים למטה כדי לפנות מקום אמיתי לשתי שורות;
+    // הוא מסתיים ב-346 והכפתורים ב-391, כך שאין התנגשות.
+    memset(&Text, 0, sizeof(wchar_t) * 100);
+    mu_swprintf(Text, I18N::Game::WantToSellForResetsInsteadOfZen);
+    RenderText(Text, m_Pos.x + 30, m_Pos.y + 212, 0, 0, RGBA(150, 230, 255, 255), 0x00000000, RT3_SORT_LEFT);
+
+    memset(&Text, 0, sizeof(wchar_t) * 100);
+    mu_swprintf(Text, I18N::Game::HoldShiftWhenYouRightClick);
+    RenderText(Text, m_Pos.x + 30, m_Pos.y + 224, 0, 0, RGBA(150, 230, 255, 255), 0x00000000, RT3_SORT_LEFT);
+
     memset(&Text, 0, sizeof(wchar_t) * 100);
     mu_swprintf(Text, I18N::Game::Warning);
-    RenderText(Text, m_Pos.x + 30, m_Pos.y + 230, 0, 0, RGBA(255, 45, 47, 255), 0x00000000, RT3_SORT_LEFT, g_hFontBold);
+    RenderText(Text, m_Pos.x + 30, m_Pos.y + 244, 0, 0, RGBA(255, 45, 47, 255), 0x00000000, RT3_SORT_LEFT, g_hFontBold);
 
     memset(&Text, 0, sizeof(wchar_t) * 100);
     mu_swprintf(Text, I18N::Game::SellingPriceWhenOpeningTheStore);
-    RenderText(Text, m_Pos.x + 30, m_Pos.y + 250, 0, 0, RGBA(247, 206, 77, 255), 0x00000000, RT3_SORT_LEFT);
+    RenderText(Text, m_Pos.x + 30, m_Pos.y + 264, 0, 0, RGBA(247, 206, 77, 255), 0x00000000, RT3_SORT_LEFT);
 
     memset(&Text, 0, sizeof(wchar_t) * 100);
     mu_swprintf(Text, I18N::Game::PleaseVerify);
-    RenderText(Text, m_Pos.x + 30, m_Pos.y + 262, 0, 0, RGBA(247, 206, 77, 255), 0x00000000, RT3_SORT_LEFT);
+    RenderText(Text, m_Pos.x + 30, m_Pos.y + 276, 0, 0, RGBA(247, 206, 77, 255), 0x00000000, RT3_SORT_LEFT);
 
     memset(&Text, 0, sizeof(wchar_t) * 100);
     mu_swprintf(Text, I18N::Game::AlreadyInThePersonalStore);
-    RenderText(Text, m_Pos.x + 30, m_Pos.y + 274, 0, 0, RGBA(247, 206, 77, 255), 0x00000000, RT3_SORT_LEFT);
+    RenderText(Text, m_Pos.x + 30, m_Pos.y + 288, 0, 0, RGBA(247, 206, 77, 255), 0x00000000, RT3_SORT_LEFT);
 
     memset(&Text, 0, sizeof(wchar_t) * 100);
     mu_swprintf(Text, I18N::Game::CancelSoldItem);
-    RenderText(Text, m_Pos.x + 30, m_Pos.y + 286, 0, 0, RGBA(247, 206, 77, 255), 0x00000000, RT3_SORT_LEFT);
+    RenderText(Text, m_Pos.x + 30, m_Pos.y + 300, 0, 0, RGBA(247, 206, 77, 255), 0x00000000, RT3_SORT_LEFT);
 
     memset(&Text, 0, sizeof(wchar_t) * 100);
     mu_swprintf(Text, I18N::Game::CanTBeReturned);
-    RenderText(Text, m_Pos.x + 30, m_Pos.y + 298, 0, 0, RGBA(247, 206, 77, 255), 0x00000000, RT3_SORT_LEFT);
+    RenderText(Text, m_Pos.x + 30, m_Pos.y + 312, 0, 0, RGBA(247, 206, 77, 255), 0x00000000, RT3_SORT_LEFT);
 
     memset(&Text, 0, sizeof(wchar_t) * 100);
     mu_swprintf(Text, I18N::Game::AllItemTrading);
-    RenderText(Text, m_Pos.x + 30, m_Pos.y + 320, 0, 0, RGBA(255, 45, 47, 255), 0x00000000, RT3_SORT_LEFT, g_hFontBold);
+    RenderText(Text, m_Pos.x + 30, m_Pos.y + 334, 0, 0, RGBA(255, 45, 47, 255), 0x00000000, RT3_SORT_LEFT, g_hFontBold);
 
     memset(&Text, 0, sizeof(wchar_t) * 100);
-    mu_swprintf(Text, I18N::Game::CanOnlyBeDoneUsingZen);
-    RenderText(Text, m_Pos.x + 30, m_Pos.y + 332, 0, 0, RGBA(255, 45, 47, 255), 0x00000000, RT3_SORT_LEFT, g_hFontBold);
+    mu_swprintf(Text, I18N::Game::CanBeDoneUsingZenOrResets);
+    RenderText(Text, m_Pos.x + 30, m_Pos.y + 346, 0, 0, RGBA(255, 45, 47, 255), 0x00000000, RT3_SORT_LEFT, g_hFontBold);
 }
 
 bool SEASON3B::CNewUIMyShopInventory::Render()

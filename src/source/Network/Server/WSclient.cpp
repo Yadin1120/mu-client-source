@@ -2734,11 +2734,36 @@ void ReceiveCreateTransformViewport(std::span<const BYTE> ReceiveBuffer)
 
     int Offset = sizeof(PWHEADER_DEFAULT_WORD);
 
+    // The buff slots at the end of PCREATE_TRANSFORM_EXTENDED are variable length - the
+    // server sends only s_BuffCount of them, which is exactly what the Offset arithmetic
+    // at the bottom of this loop assumes. So sizeof() is the maximum size of one entry,
+    // not the minimum, and validating against it dropped every transformation packet
+    // without buffs (47 bytes vs the 63 sizeof() asks for): the transformation ring had
+    // no visible effect at all. Validate the fixed part here, the buff tail below.
+    constexpr std::size_t TransformFixedSize =
+        sizeof(PCREATE_TRANSFORM_EXTENDED) - (sizeof(BYTE) * MAX_BUFF_SLOT_INDEX);
+
     for (int i = 0; i < Data->Value; i++)
     {
-        auto Data2 = safe_cast<PCREATE_TRANSFORM_EXTENDED>(ReceiveBuffer.subspan(Offset));
+        if (static_cast<std::size_t>(Offset) >= ReceiveBuffer.size())
+        {
+            assert(false);
+            return;
+        }
+
+        const auto Remaining = ReceiveBuffer.subspan(Offset);
+        auto Data2 = safe_cast_variable<PCREATE_TRANSFORM_EXTENDED>(Remaining, TransformFixedSize, "PCREATE_TRANSFORM_EXTENDED");
         if (Data2 == nullptr)
         {
+            assert(false);
+            return;
+        }
+
+        if (Data2->s_BuffCount > MAX_BUFF_SLOT_INDEX
+            || Remaining.size() < TransformFixedSize + Data2->s_BuffCount)
+        {
+            LogSafeCastSizeMismatch("PCREATE_TRANSFORM_EXTENDED (buffs)",
+                                    Remaining.size(), TransformFixedSize + Data2->s_BuffCount);
             assert(false);
             return;
         }
@@ -2810,7 +2835,11 @@ void ReceiveCreateTransformViewport(std::span<const BYTE> ReceiveBuffer)
             c->SkinIndex = gCharacterManager.GetSkinModelIndex(c->Class);
             c->PK = Data2->Path & 0xf;
             o->Kind = KIND_PLAYER;
-            c->Change = true;
+            // ‏c->Change מסומן רק **אחרי** פענוח הציוד, למטה. ReadEquipmentExtended יוצא
+            // באמצע כשהדגל דלוק ("todo: is this the correct place to return?" בקוד המקורי),
+            // ואז הנשקים כבר הוצבו אבל חלקי הגוף, הכנפיים וקביעת הגודל לא — בדיוק התצוגה
+            // השבורה שנראתה בצורות שהן מודל שחקן. הורדת פריט אחר תיקנה את המראה כי היא
+            // מריצה את אותה פונקציה שוב על אובייקט מיוצב.
 
             for (int j = 0; j < Data2->s_BuffCount; ++j)
             {
@@ -2841,7 +2870,14 @@ void ReceiveCreateTransformViewport(std::span<const BYTE> ReceiveBuffer)
 
             CMultiLanguage::ConvertFromUtf8(c->ID, Data2->ID, MAX_USERNAME_SIZE);
 
-            ChangeCharacterExt(FindCharacterIndex(Key), Data2->Equipment);
+            // ChangeCharacterExt מפענח את פורמט הציוד **הישן**, ואילו הפקטה הזו נושאת את
+            // הבלוק המורחב (3 בייט לפריט) — כמו כל שאר המסלולים המורחבים, שכולם קוראים
+            // ל-ReadEquipmentExtended. עם המפענח הישן משבצת חיית המחמד נקראה מ-Equipment[4],
+            // שבפורמט המורחב הוא הבייט התחתון של מספר הנשק ביד ימין: נשק מספר 38 נתן
+            // 38 & 3 == 2, כלומר "חד קרן", ורכב רפאים הופיע מתחת לדמות המשונה. בנוסף
+            // ChangeCharacterExt לא מקבל את בייט ה-Flags בכלל.
+            ReadEquipmentExtended(FindCharacterIndex(Key), Data2->Flags, Data2->Equipment);
+            c->Change = true;
         }
 
         Offset += (sizeof(PCREATE_TRANSFORM_EXTENDED) - (sizeof(BYTE) * (MAX_BUFF_SLOT_INDEX - Data2->s_BuffCount)));
@@ -6248,7 +6284,7 @@ BOOL ReceiveEquipmentItemExtended(std::span<const BYTE> ReceiveBuffer)
 
         if (iSourceIndex >= MAX_MY_INVENTORY_EX_INDEX)
         {
-            int price = 0;
+            PersonalItemPrice price;
             if (GetPersonalItemPrice(iSourceIndex, price, g_IsPurchaseShop))
             {
                 RemovePersonalItemPrice(iSourceIndex, g_IsPurchaseShop);
@@ -7254,7 +7290,18 @@ void ReceiveTradeMyGold(const BYTE* ReceiveBuffer)
 void ReceiveTradeYourGold(const BYTE* ReceiveBuffer)
 {
     auto Data = (LPPHEADER_DEFAULT_DWORD)ReceiveBuffer;
-    g_pTrade->SetYourTradeGold(int(Data->Value));
+
+    // אותו קידוד כמו בחנות: הביט העליון אומר שהסכום הזה בריסטים ולא בזן. שדה חדש
+    // בפקטה היה משנה את אורכה, וקליינט ישן שעדיין לא התעדכן היה מפרש אותה לא נכון.
+    const uint32_t value = static_cast<uint32_t>(Data->Value);
+    if ((value & PERSONAL_SHOP_RESETS_PRICE_FLAG) != 0)
+    {
+        g_pTrade->SetYourTradeResets(static_cast<int>(value & ~PERSONAL_SHOP_RESETS_PRICE_FLAG));
+    }
+    else
+    {
+        g_pTrade->SetYourTradeGold(static_cast<int>(value));
+    }
 }
 
 void ReceiveTradeYourResult(const BYTE* ReceiveBuffer)
@@ -9182,6 +9229,21 @@ void ReceiveDestroyPersonalShop(const BYTE* ReceiveBuffer)
     }
 }
 
+// המחיר והמטבע של פריט בחנות, כפי שהגיעו מהשרת.
+//
+// השדה PriceItemType היה שמור בפורמט המורחב ולא בשימוש, ולכן אפשר היה להוסיף בו
+// מטבע שני בלי לשנות ולו בית אחד באורך הפקטה. ערך לא מוכר נחשב זן — כך שקליינט
+// חדש מול שרת ישן (שמשאיר את השדה אפס) פשוט מתנהג כמו קודם.
+static PersonalItemPrice MakeShopPrice(const GETPSHOPITEM_DATAINFO* pShopItem)
+{
+    PersonalItemPrice price;
+    price.amount = pShopItem->MoneyPrice;
+    price.currency = pShopItem->PriceItemType == static_cast<WORD>(PersonalShopCurrency::Resets)
+        ? PersonalShopCurrency::Resets
+        : PersonalShopCurrency::Zen;
+    return price;
+}
+
 void ReceivePersonalShopItemList(std::span<const BYTE> ReceiveBuffer)
 {
     auto Header = safe_cast<GETPSHOPITEMLIST_HEADERINFO>(ReceiveBuffer);
@@ -9231,23 +9293,22 @@ void ReceivePersonalShopItemList(std::span<const BYTE> ReceiveBuffer)
             int length = CalcItemLength(itemData);
             itemData = itemData.subspan(0, length);
 
-            // todo: use item prices as well when the UI is ready
             if (pShopItem->MoneyPrice > 0)
             {
                 g_pPurchaseShopInventory->InsertItem(pShopItem->ItemSlot, itemData);
-                AddPersonalItemPrice(pShopItem->ItemSlot, pShopItem->MoneyPrice, PSHOPWNDTYPE_PURCHASE);
+                AddPersonalItemPrice(pShopItem->ItemSlot, MakeShopPrice(pShopItem), PSHOPWNDTYPE_PURCHASE);
             }
             else
             {
+                // שורה אחת פגומה מדלגת על עצמה ולא מפילה את כל החלון.
+                //
+                // עד היום הענף הזה **הסתיר שלושה חלונות של הקונה** (כולל התיק שלו) וחזר
+                // מהמטפל, כלומר נטש את שאר הרשימה: פריט אחד עם מחיר לא צפוי הפך חנות
+                // שלמה לבלתי-נפתחת, והמסך של הקונה התפרק בלי שום הודעה. מסלול הרענון
+                // (0x13) מעולם לא עשה את זה, ולכן אותה חנות נראתה אחרת לפי איזו פקטה
+                // הגיעה — סימן מובהק שההתנהגות הזו לא הייתה מכוונת.
                 g_ConsoleDebug->Write(MCD_ERROR, L"[ReceivePersonalShopItemList]Item Count : %d, Item Index : %d, Item Price : %d", Header->ItemCount, i, pShopItem->MoneyPrice);
-
-                g_ErrorReport.Write(L"@ ReceivePersonalShopItemList - item price less than zero(%d)\n", pShopItem->MoneyPrice);
-
-                g_pNewUISystem->Hide(SEASON3B::INTERFACE_INVENTORY);
-                g_pNewUISystem->Hide(SEASON3B::INTERFACE_MYSHOP_INVENTORY);
-                g_pNewUISystem->Hide(SEASON3B::INTERFACE_PURCHASESHOP_INVENTORY);
-
-                return;
+                g_ErrorReport.Write(L"@ ReceivePersonalShopItemList - skipping item with unusable price(%d)\n", pShopItem->MoneyPrice);
             }
 
             Offset += length;
@@ -9305,7 +9366,7 @@ void ReceiveRefreshItemList(std::span<const BYTE> ReceiveBuffer)
             itemData = itemData.subspan(0, length);
 
             g_pMyShopInventory->InsertItem(pShopItem->ItemSlot, itemData);
-            AddPersonalItemPrice(pShopItem->ItemSlot, pShopItem->MoneyPrice, PSHOPWNDTYPE_SALE);
+            AddPersonalItemPrice(pShopItem->ItemSlot, MakeShopPrice(pShopItem), PSHOPWNDTYPE_SALE);
 
             Offset += length;
         }
@@ -9337,7 +9398,7 @@ void ReceiveRefreshItemList(std::span<const BYTE> ReceiveBuffer)
             itemData = itemData.subspan(0, length);
 
             g_pPurchaseShopInventory->InsertItem(pShopItem->ItemSlot, itemData);
-            AddPersonalItemPrice(pShopItem->ItemSlot, pShopItem->MoneyPrice, PSHOPWNDTYPE_PURCHASE);
+            AddPersonalItemPrice(pShopItem->ItemSlot, MakeShopPrice(pShopItem), PSHOPWNDTYPE_PURCHASE);
 
             Offset += length;
         }
@@ -9404,7 +9465,25 @@ void ReceivePurchaseItem(std::span<const BYTE> ReceiveBuffer)
         {
         case PURCHASEITEM_RESULTINFO::LackOfMoney:
         {
-            g_pSystemLogBox->AddText(I18N::Game::YouAreShortOfZen, SEASON3B::TYPE_ERROR_MESSAGE);
+            // אותו קוד תוצאה משמש לשני המטבעות — הוספת קוד חדש לא הייתה עוזרת, כי
+            // הקליינט המותקן אצל השחקנים לא מציג כלום לקודים שאינו מכיר. המטבע נלקח
+            // מטבלת המחירים המקומית.
+            //
+            // ⚠️ המפתח לטבלה הוא מספר המשבצת של הפריט (GetItemInventoryIndex), ולא
+            // ‏GetSourceIndex שהוא מספר הריבוע שנלחץ בממשק. שימוש בזה האחרון גורם
+            // לחיפוש להיכשל, וההודעה נופלת חזרה ל"אין לך מספיק זן" גם על מחיר
+            // בריסטים. זו בדיוק הדרך שבה הבקשה עצמה נשלחת (ראה CPersonalShopItemBuyMsgBoxLayout).
+            PersonalItemPrice price;
+            ITEM* pBoughtItem = g_pPurchaseShopInventory->FindItem(g_pPurchaseShopInventory->GetSourceIndex());
+            const int priceKey = g_pPurchaseShopInventory->GetItemInventoryIndex(pBoughtItem);
+            const bool inResets =
+                priceKey >= 0
+                && GetPersonalItemPrice(priceKey, price, PSHOPWNDTYPE_PURCHASE)
+                && price.IsResets();
+
+            g_pSystemLogBox->AddText(
+                inResets ? I18N::Game::YouAreShortOfResets : I18N::Game::YouAreShortOfZen,
+                SEASON3B::TYPE_ERROR_MESSAGE);
         }
         break;
         case PURCHASEITEM_RESULTINFO::MoneyOverflowOrNotEnoughSpace:
@@ -9874,6 +9953,20 @@ void ReceiveCreateChatRoomResult(const BYTE* ReceiveBuffer)
         break;
     case 0x01:
         g_pFriendMenu->RemoveRequestWindow(szName);
+
+        // 🔴 בלי זה החלון נוצר ולא מופיע לעולם.
+        //
+        // מנהל החלונות של ממשק החברים מרוקן את תור ההודעות שלו רק בתוך
+        // `CNewUIFriendWindow::UpdateMouseEvent`, ו-`CNewUIManager` קורא לזה **רק
+        // לאובייקטים גלויים**. הממשק הזה מוסתר כברירת מחדל (‏`Show(false)` ביצירה),
+        // ולכן ה-`UI_MESSAGE_SELECT` שאמור להציג את חלון הצ׳אט נשאר תקוע בתור עד
+        // שהשחקן פותח את רשימת החברים בעצמו. התסמין: "החלון לא נפתח אוטומטי".
+        // אותה בדיקה בדיוק כבר קיימת ב-`ReceiveFriendAddRequest` ומאותה סיבה.
+        if (g_pNewUISystem->IsVisible(SEASON3B::INTERFACE_FRIEND) == false)
+        {
+            g_pNewUISystem->Show(SEASON3B::INTERFACE_FRIEND);
+        }
+
         if (Data->Type == 0)
         {
             DWORD dwUIID = g_pWindowMgr->AddWindow(UIWNDTYPE_CHAT, 100, 100, I18N::Game::Talking);
@@ -12583,6 +12676,10 @@ bool ReceiveIGS_CashPoint(const BYTE* pReceiveBuffer)
     g_InGameShopSystem->SetTotalCash((double)Data->dTotalCash);
     g_InGameShopSystem->SetTotalPoint((double)Data->dTotalPoint);
     g_InGameShopSystem->SetCashCreditCard((double)Data->dCashCredit);
+    // ‏dCashPrepaid נושא את **יתרת הריסטים** של הדמות (ראה UpdateCashShopPointsPlugIn
+    // בשרת). זו הפקטה היחידה שמביאה את המספר הזה באמצע משחק — פקטת טעינת הדמות,
+    // שנושאת את מונה ההישג, מציירת עותק שני של הדמות אם שולחים אותה בזמן משחק.
+    // לכן היא גם המקור לבדיקת "יש לך מספיק ריסטים" בטולטיפ של החנות.
     g_InGameShopSystem->SetCashPrepaid((double)Data->dCashPrepaid);
     g_InGameShopSystem->SetTotalMileage((double)Data->dTotalMileage);
     return true;

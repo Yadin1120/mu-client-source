@@ -14118,6 +14118,16 @@ CHARACTER* CreateMonster(EMonsterType Type, int PositionX, int PositionY, int Ke
         ::wcscpy(c->ID, L"GameMaster");
         c->Object.Scale = 1.0f;
         c->Object.SubType = MODEL_GM_CHARACTER;
+
+        // הפסל מסומן כמפעיל, כמו גיים מאסטר אמיתי. זה מה שמדליק את הסמל שמרחף
+        // מעל הראש (‏`CreatePartsFactory` → `PARTS_WEBZEN` → `MODEL_WEBZEN_MARK`,
+        // עצם הראש + 70) ואת השם באדום (‏`ResolveNameColor`). ההילה על הקרקע כבר
+        // הגיעה מ-`MODEL_GM_CHARACTER`.
+        //
+        // אי אפשר לעשות את זה מהשרת: `CtlCode` נשלח רק בפקטת שחקן, ולפסל אין כזו.
+        // הבדיקות שנוגעות ב-`CtlCode` במקומות אחרים מסתכלות על `Hero` בלבד או
+        // דורשות `KIND_PLAYER`, ולכן הן לא מושפעות.
+        c->CtlCode = CTLCODE_20OPERATOR;
         break;
     case MONSTER_GOLDEN_TITAN:
         OpenMonsterModel(MONSTER_MODEL_TITAN);

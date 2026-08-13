@@ -17,6 +17,7 @@
 #include "Engine/Object/ZzzOpenData.h"
 #include "GameLogic/Items/InventoryUtils.h"
 #include "UI/NewUI/NewUISystem.h"
+#include "Core/Input/KeyState.h"
 
 extern int DeleteIndex;
 extern int AppointStatus;
@@ -4409,6 +4410,9 @@ void CCherryBlossomMsgBox::RenderButtons()
     m_BtnExit.Render();
 }
 
+// באיזה מטבע מוצע הסכום בחלונית החליפין הפתוחה כרגע.
+static bool s_bTradeOfferInResets = false;
+
 bool SEASON3B::CTradeZenMsgBoxLayout::SetLayout()
 {
     CNewUITextInputMsgBox* pMsgBox = GetMsgBox();
@@ -4418,8 +4422,14 @@ bool SEASON3B::CTradeZenMsgBoxLayout::SetLayout()
     if (false == pMsgBox->Create(MSGBOX_COMMON_TYPE_OKCANCEL, INPUTBOX_TYPE_NUMBER, INPUTBOX_WIDTH, INPUTBOX_HEIGHT, INPUTBOX_TEXTLIMIT))
         return false;
 
+    // אותו דפוס כמו בחנות האישית: Shift מחליף את המטבע, ומצב המקש נקרא ברגע
+    // פתיחת החלונית. תיבת הקלט מספרים בלבד, ולכן אי-אפשר לסמן מטבע בתוך הטקסט.
+    s_bTradeOfferInResets = Core::Input::IsKeyDown(VK_SHIFT);
+
     pMsgBox->SetInputBoxOption(UIOPTION_NUMBERONLY | UIOPTION_PAINTBACK);
-    pMsgBox->AddMsg(I18N::Game::EnterTheAmountOfZenYouWouldLikeToTrade);
+    pMsgBox->AddMsg(s_bTradeOfferInResets
+        ? I18N::Game::EnterSellingPriceResets
+        : I18N::Game::EnterTheAmountOfZenYouWouldLikeToTrade);
     pMsgBox->AddCallbackFunc(CTradeZenMsgBoxLayout::ReturnDown, MSGBOX_EVENT_PRESSKEY_RETURN);
     pMsgBox->AddCallbackFunc(CTradeZenMsgBoxLayout::OkBtnDown, MSGBOX_EVENT_USER_COMMON_OK);
     pMsgBox->AddCallbackFunc(CTradeZenMsgBoxLayout::CancelBtnDown, MSGBOX_EVENT_USER_COMMON_CANCEL);
@@ -4440,7 +4450,14 @@ CALLBACK_RESULT SEASON3B::CTradeZenMsgBoxLayout::ProcessOk(class CNewUIMessageBo
     if (iInputZen == 0)
         return CALLBACK_CONTINUE;
 
-    g_pTrade->SendRequestMyGoldInput(iInputZen);
+    if (s_bTradeOfferInResets)
+    {
+        g_pTrade->SendRequestMyResetsInput(iInputZen);
+    }
+    else
+    {
+        g_pTrade->SendRequestMyGoldInput(iInputZen);
+    }
 
     PlayBuffer(SOUND_CLICK01);
     g_MessageBox->SendEvent(pOwner, MSGBOX_EVENT_DESTROY);
@@ -4615,6 +4632,14 @@ CALLBACK_RESULT SEASON3B::CZenPaymentMsgBoxLayout::CancelBtnDown(class CNewUIMes
     return CALLBACK_BREAK;
 }
 
+// באיזה מטבע מוזן המחיר בחלונית הפתוחה כרגע.
+//
+// המקלדת ולא כפתור: תיבת הקלט היא מספרים בלבד ואי-אפשר להקליד בה סימן, והוספת
+// כפתור שלישי לחלונית דורשת שינוי פריסה שאי-אפשר לאמת בלי להריץ את המשחק.
+// ‏Shift + לחיצה ימנית הוא דפוס מוכר במשחק הזה, והוא נקרא ברגע פתיחת החלונית —
+// כלומר בדיוק ברגע הלחיצה, ולא כשהשחקן כבר מקליד.
+static bool s_bPersonalShopPriceInResets = false;
+
 bool SEASON3B::CPersonalShopItemValueMsgBoxLayout::SetLayout()
 {
     CNewUITextInputMsgBox* pMsgBox = GetMsgBox();
@@ -4624,8 +4649,10 @@ bool SEASON3B::CPersonalShopItemValueMsgBoxLayout::SetLayout()
     if (false == pMsgBox->Create(MSGBOX_COMMON_TYPE_OKCANCEL, INPUTBOX_TYPE_NUMBER, INPUTBOX_WIDTH, INPUTBOX_HEIGHT, INPUTBOX_TEXTLIMIT))
         return false;
 
+    s_bPersonalShopPriceInResets = Core::Input::IsKeyDown(VK_SHIFT);
+
     pMsgBox->SetInputBoxOption(UIOPTION_NUMBERONLY | UIOPTION_PAINTBACK);
-    pMsgBox->AddMsg(I18N::Game::EnterSellingPrice);
+    pMsgBox->AddMsg(s_bPersonalShopPriceInResets ? I18N::Game::EnterSellingPriceResets : I18N::Game::EnterSellingPrice);
     pMsgBox->AddCallbackFunc(CPersonalShopItemValueMsgBoxLayout::ReturnDown, MSGBOX_EVENT_PRESSKEY_RETURN);
     pMsgBox->AddCallbackFunc(CPersonalShopItemValueMsgBoxLayout::OkBtnDown, MSGBOX_EVENT_USER_COMMON_OK);
     pMsgBox->AddCallbackFunc(CPersonalShopItemValueMsgBoxLayout::CancelBtnDown, MSGBOX_EVENT_USER_COMMON_CANCEL);
@@ -4665,8 +4692,13 @@ CALLBACK_RESULT SEASON3B::CPersonalShopItemValueMsgBoxLayout::ProcessOk(class CN
         pItem = g_pMyShopInventory->FindItem(iSourceIndex);
     }
 
+    // ⚠️ אזהרת "המחיר נמוך משווי הפריט" רלוונטית רק לזן.
+    //
+    // שווי הפריט אצל הסוחר נמדד במיליוני זן, ומחיר בריסטים הוא מספר חד-ספרתי —
+    // כלומר בלי התנאי הזה החלונית הייתה קופצת ב**כל** הזנת מחיר בריסטים, תמיד,
+    // והופכת את הפיצ'ר לבלתי שמיש.
     bool bResult = false;
-    if (pItem)
+    if (pItem && !s_bPersonalShopPriceInResets)
     {
         DWORD dwItemValue = ItemValue(pItem, 2);
 
@@ -4702,6 +4734,16 @@ CALLBACK_RESULT SEASON3B::CPersonalShopItemValueMsgBoxLayout::ProcessOk(class CN
         int iSourceIndex = -1, iTargetIndex = -1;
         int shopWndType = 0;
 
+        // הסכום נשלח לשרת עם ביט המטבע, ונשמר מקומית כסכום חיובי + מטבע.
+        // חשוב שהמקומי יישאר חיובי: כמה בדיקות בקליינט מפרשות מחיר קטן או שווה
+        // לאפס כ"לא נקבע מחיר", ובראשן זו שמונעת פתיחת חנות.
+        const PersonalItemPrice localPrice{
+            iInputZen,
+            s_bPersonalShopPriceInResets ? PersonalShopCurrency::Resets : PersonalShopCurrency::Zen };
+        const uint32_t wirePrice = s_bPersonalShopPriceInResets
+            ? (static_cast<uint32_t>(iInputZen) | PERSONAL_SHOP_RESETS_PRICE_FLAG)
+            : static_cast<uint32_t>(iInputZen);
+
         if (pPickedItem)
         {
             ITEM* pItemObj = pPickedItem->GetItem();
@@ -4710,30 +4752,30 @@ CALLBACK_RESULT SEASON3B::CPersonalShopItemValueMsgBoxLayout::ProcessOk(class CN
 
             if (pPickedItem->GetOwnerInventory() == g_pMyInventory->GetInventoryCtrl())
             {
-                SocketClient->ToGameServer()->SendPlayerShopSetItemPrice(iSourceIndex, iInputZen);
+                SocketClient->ToGameServer()->SendPlayerShopSetItemPrice(iSourceIndex, wirePrice);
 
                 SendRequestEquipmentItem(STORAGE_TYPE::INVENTORY, iSourceIndex, pItemObj, STORAGE_TYPE::MYSHOP, iTargetIndex);
             }
             else if (pPickedItem->GetOwnerInventory() == nullptr)
             {
-                SocketClient->ToGameServer()->SendPlayerShopSetItemPrice(iSourceIndex, iInputZen);
+                SocketClient->ToGameServer()->SendPlayerShopSetItemPrice(iSourceIndex, wirePrice);
 
                 SendRequestEquipmentItem(STORAGE_TYPE::INVENTORY, iSourceIndex, pItemObj, STORAGE_TYPE::MYSHOP, iTargetIndex);
             }
             else if (pPickedItem->GetOwnerInventory() == g_pMyShopInventory->GetInventoryCtrl())
             {
-                SocketClient->ToGameServer()->SendPlayerShopSetItemPrice(iSourceIndex, iInputZen);
+                SocketClient->ToGameServer()->SendPlayerShopSetItemPrice(iSourceIndex, wirePrice);
 
                 SendRequestEquipmentItem(STORAGE_TYPE::MYSHOP, iSourceIndex, pItemObj, STORAGE_TYPE::MYSHOP, iTargetIndex);
             }
 
-            AddPersonalItemPrice(iTargetIndex, iInputZen, g_IsPurchaseShop);
+            AddPersonalItemPrice(iTargetIndex, localPrice, g_IsPurchaseShop);
         }
         else
         {
             iSourceIndex = g_pMyShopInventory->GetSourceIndex();
-            SocketClient->ToGameServer()->SendPlayerShopSetItemPrice(iSourceIndex, iInputZen);
-            AddPersonalItemPrice(iSourceIndex, iInputZen, g_IsPurchaseShop);
+            SocketClient->ToGameServer()->SendPlayerShopSetItemPrice(iSourceIndex, wirePrice);
+            AddPersonalItemPrice(iSourceIndex, localPrice, g_IsPurchaseShop);
         }
     }
 

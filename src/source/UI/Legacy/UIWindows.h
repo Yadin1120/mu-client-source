@@ -114,11 +114,26 @@ protected:
 
 class CUIChatWindow : public CUIBaseWindow
 {
+    // Chat server packets arrive on the network thread. Handling them there wrote into the
+    // list boxes while the render thread was walking them, which invalidated the iterator
+    // RenderDataLine was holding (UIControls.cpp) and crashed the client. They are queued
+    // here instead and handed to the UI thread by DispatchPendingPackets().
+    struct PendingChatPacket
+    {
+        DWORD m_dwWindowUIID;
+        std::vector<BYTE> m_Data;
+    };
+
     static void HandlePacketS(int32_t handle, const BYTE* ReceiveBuffer, int32_t Size);
     inline static std::map<int32_t, DWORD> ConnectionHandleToWindowUuid = { };
+    inline static std::mutex s_PendingMutex;
+    inline static std::vector<PendingChatPacket> s_PendingPackets;
     Connection* _connection;
 
 public:
+    // Must be called from the render/UI thread only.
+    static void DispatchPendingPackets();
+
     CUIChatWindow();
     virtual ~CUIChatWindow();
 

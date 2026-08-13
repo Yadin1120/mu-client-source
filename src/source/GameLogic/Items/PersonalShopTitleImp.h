@@ -205,10 +205,37 @@ inline void DrawPersonalShopTitleImp()
     CPersonalShopTitleImp::GetObjPtr()->Draw();
 }
 
+// הביט שמסמן לשרת "המחיר הזה בריסטים". חייב להתאים ל-StorePriceRules.ResetsPriceFlag.
+//
+// הקידוד חי רק על החוט בכיוון קליינט→שרת ומפוענח מיד עם הקליטה. אסור לשמור אותו
+// לא כאן ולא במסד: הקליינט מפרש מחיר קטן או שווה לאפס כ"לא נקבע מחיר", והשרת היה
+// מפרש ערך שלילי כמחיר בזן שמשלם לקונה.
+#define PERSONAL_SHOP_RESETS_PRICE_FLAG 0x80000000u
+
+// המטבע שבו פריט בחנות האישית מתומחר. חייב להתאים ל-StorePriceCurrency בשרת.
+enum class PersonalShopCurrency : int
+{
+    Zen = 0,
+    Resets = 1,
+};
+
+// מחיר בחנות אישית = סכום **חיובי** + מטבע.
+//
+// הסכום נשאר חיובי בכוונה, ולא מקודד את המטבע בסימן: הקליינט בודק במקומות
+// שונים `price <= 0` כדי לדעת "לא נקבע מחיר", ומחיר שלילי היה נראה לו כלא-מוגדר
+// ומונע פתיחת חנות. הביט העליון משמש רק כשהמחיר נשלח לשרת.
+struct PersonalItemPrice
+{
+    int					amount = 0;
+    PersonalShopCurrency currency = PersonalShopCurrency::Zen;
+
+    bool IsResets() const { return currency == PersonalShopCurrency::Resets; }
+};
+
 //. CPersonalItemPriceTable
 class CPersonalItemPriceTable
 {
-    std::map<int, int>	m_mapTable;
+    std::map<int, PersonalItemPrice>	m_mapTable;
 
     static CPersonalItemPriceTable* ms_pSeller;
     static CPersonalItemPriceTable* ms_pBuyer;
@@ -224,14 +251,14 @@ public:
         RemoveAllItemPrice();
     }
 
-    void AddItemPrice(int index, int price)
+    void AddItemPrice(int index, const PersonalItemPrice& price)
     {
         auto mi = m_mapTable.find(index);
         if (mi != m_mapTable.end())
         {
             m_mapTable.erase(mi);
         }
-        m_mapTable.insert(std::map<int, int>::value_type(index, price));
+        m_mapTable.insert(std::map<int, PersonalItemPrice>::value_type(index, price));
     }
     void RemoveItemPrice(int index)
     {
@@ -246,7 +273,7 @@ public:
         m_mapTable.clear();
     }
 
-    bool GetItemPrice(int index, int& price)
+    bool GetItemPrice(int index, PersonalItemPrice& price)
     {
         auto mi = m_mapTable.find(index);
         if (mi != m_mapTable.end())
@@ -295,6 +322,13 @@ public:
     }
 };
 
+// יתרת הריסטים שאפשר להוציא, כפי שהשרת דיווח עליה לאחרונה.
+//
+// היא מגיעה בפקטת מאזן חנות ה-X (0xD2/0x01) ולא בפקטת טעינת הדמות — שליחת האחרונה
+// באמצע משחק מציירת עותק שני של הדמות. הפונקציה מוגדרת בקובץ ה-cpp כדי שקבצים
+// שרק צריכים את המספר לא ייגררו לתלות במערכת החנות.
+int GetPersonalShopResetBalance();
+
 //. wrapping to C-style function
 inline bool CreatePersonalItemTable()
 {
@@ -306,13 +340,19 @@ inline void ReleasePersonalItemTable()
     CPersonalItemPriceTable::ReleasePersonalItemTable();
 }
 
-inline void AddPersonalItemPrice(int index, int price, int type)
+inline void AddPersonalItemPrice(int index, const PersonalItemPrice& price, int type)
 {
     CPersonalItemPriceTable* pPersonalItemTable = CPersonalItemPriceTable::GetObjPtr(type);
     if (pPersonalItemTable)
     {
         pPersonalItemTable->AddItemPrice(index, price);
     }
+}
+
+// עומס לקריאות שעדיין מדברות רק על זן.
+inline void AddPersonalItemPrice(int index, int zenPrice, int type)
+{
+    AddPersonalItemPrice(index, PersonalItemPrice{ zenPrice, PersonalShopCurrency::Zen }, type);
 }
 
 inline void RemovePersonalItemPrice(int index, int type)
@@ -333,7 +373,7 @@ inline void RemoveAllPerosnalItemPrice(int type)
     }
 }
 
-inline bool GetPersonalItemPrice(int index, int& price, int type)
+inline bool GetPersonalItemPrice(int index, PersonalItemPrice& price, int type)
 {
     CPersonalItemPriceTable* pPersonalItemTable = CPersonalItemPriceTable::GetObjPtr(type);
     if (!pPersonalItemTable)

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
@@ -12930,5 +12930,47 @@
   </data>
   <data name="DefaultFont" xml:space="preserve">
     <value>Default</value>
+  </data>
+  <data name="Selling price (resets): %s" xml:space="preserve">
+    <value>Selling price (resets): %s</value>
+  </data>
+  <data name="You are short of resets." xml:space="preserve">
+    <value>You are short of resets.</value>
+  </data>
+  <data name="Enter selling price (resets)." xml:space="preserve">
+    <value>Enter selling price (resets).</value>
+  </data>
+  <data name="Right click sets a zen price. Shift + right click sets a price in resets." xml:space="preserve">
+    <value>Right click sets a zen price. Shift + right click sets a price in resets.</value>
+  </data>
+  <data name="can be done using zen or resets." xml:space="preserve">
+    <value>can be done using zen or resets.</value>
+  </data>
+  <data name="Shift + the zen button offers resets." xml:space="preserve">
+    <value>Shift + the zen button offers resets.</value>
+  </data>
+  <data name="the level and the items of the player." xml:space="preserve">
+    <value>the level and the items of the player.</value>
+  </data>
+  <data name="Right click = zen, Shift = resets" xml:space="preserve">
+    <value>Right click = zen, Shift = resets</value>
+  </data>
+  <data name="Clicking the zen button = zen" xml:space="preserve">
+    <value>Clicking the zen button = zen</value>
+  </data>
+  <data name="Shift + click = resets" xml:space="preserve">
+    <value>Shift + click = resets</value>
+  </data>
+  <data name="Right click = price in zen" xml:space="preserve">
+    <value>Right click = price in zen</value>
+  </data>
+  <data name="Shift + right click = price in resets" xml:space="preserve">
+    <value>Shift + right click = price in resets</value>
+  </data>
+  <data name="Want to sell for resets instead of zen?" xml:space="preserve">
+    <value>Want to sell for resets instead of zen?</value>
+  </data>
+  <data name="Hold Shift when you right click" xml:space="preserve">
+    <value>Hold Shift when you right click</value>
   </data>
 </root>

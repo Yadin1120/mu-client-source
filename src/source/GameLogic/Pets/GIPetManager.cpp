@@ -648,35 +648,59 @@ namespace giPetManager
         }
         else if ((iInvenType == SEASON3B::TOOLTIP_TYPE_MY_SHOP) || (iInvenType == SEASON3B::TOOLTIP_TYPE_PURCHASE_SHOP))
         {
-            int price = 0;
+            PersonalItemPrice price;
             const int indexInv = g_pMyShopInventory->GetInventoryCtrl()->GetIndexByItem(pItem);
             wchar_t textBuffer[kTooltipBufferCapacity] {};
 
             if (GetPersonalItemPrice(indexInv, price, g_IsPurchaseShop))
             {
-                ConvertGold(price, textBuffer);
+                ConvertGold(price.amount, textBuffer);
 
+                // אותם ספי צבע ואותה השוואת יתרה כמו בטולטיפ הרגיל — ראה ZzzInventory.cpp.
                 int priceColor = TEXT_COLOR_WHITE;
-                if (price >= 10000000)
+                if (price.IsResets())
+                {
+                    if (price.amount >= 100)
+                    {
+                        priceColor = TEXT_COLOR_RED;
+                    }
+                    else if (price.amount >= 25)
+                    {
+                        priceColor = TEXT_COLOR_YELLOW;
+                    }
+                    else if (price.amount >= 5)
+                    {
+                        priceColor = TEXT_COLOR_GREEN;
+                    }
+                }
+                else if (price.amount >= 10000000)
                 {
                     priceColor = TEXT_COLOR_RED;
                 }
-                else if (price >= 1000000)
+                else if (price.amount >= 1000000)
                 {
                     priceColor = TEXT_COLOR_YELLOW;
                 }
-                else if (price >= 100000)
+                else if (price.amount >= 100000)
                 {
                     priceColor = TEXT_COLOR_GREEN;
                 }
 
-                appendLine(priceColor, true, false, priceFormat.c_str(), textBuffer);
+                appendLine(
+                    priceColor,
+                    true,
+                    false,
+                    price.IsResets() ? I18N::Game::SellingPriceResetsS : priceFormat.c_str(),
+                    textBuffer);
                 appendEmptyLine();
 
-                const auto heroGold = CharacterMachine->Gold;
-                if ((static_cast<std::int64_t>(heroGold) < static_cast<std::int64_t>(price)) && (g_IsPurchaseShop == PSHOPWNDTYPE_PURCHASE))
+                const std::int64_t balance = price.IsResets()
+                    ? static_cast<std::int64_t>(GetPersonalShopResetBalance())
+                    : static_cast<std::int64_t>(CharacterMachine->Gold);
+
+                if ((balance < static_cast<std::int64_t>(price.amount)) && (g_IsPurchaseShop == PSHOPWNDTYPE_PURCHASE))
                 {
-                    appendLine(TEXT_COLOR_RED, true, false, I18N::Game::YouAreShortOfZen);
+                    appendLine(TEXT_COLOR_RED, true, false, price.IsResets() ? I18N::Game::YouAreShortOfResets : I18N::Game::YouAreShortOfZen);
                     appendEmptyLine();
                 }
             }

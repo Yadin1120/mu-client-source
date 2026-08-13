@@ -1,4 +1,4 @@
-//*****************************************************************************
+﻿//*****************************************************************************
 // File: NewUITrade.h
 //
 // Desc: interface for the CNewUITrade class.
@@ -74,6 +74,11 @@ namespace SEASON3B
         int            m_nYourTradeGold;       // Other player's trade gold
         int            m_nMyTradeGold;         // My trade gold
         int            m_nTempMyTradeGold;     // Temporary buffer for my trade gold
+
+        // ריסטים שהוצעו בשני הכיוונים. מספר חיובי בלבד — ביט המטבע קיים רק על החוט.
+        int            m_nYourTradeResets;
+        int            m_nMyTradeResets;
+        int            m_nTempMyTradeResets;
         bool           m_bYourConfirm;         // Other player's confirmation status
         bool           m_bMyConfirm;           // My confirmation status
         int            m_nMyTradeWait;         // Delay to prevent spamming my confirm button
@@ -113,6 +118,7 @@ namespace SEASON3B
 
         void GetYourID(wchar_t* pszYourID);
         void SetYourTradeGold(int nGold) { m_nYourTradeGold = nGold; }
+        void SetYourTradeResets(int nResets) { m_nYourTradeResets = nResets; }
 
         void SendRequestMyGoldInput(int nInputGold);
         void SendRequestItemToMyInven(ITEM* pItemObj,
@@ -123,6 +129,12 @@ namespace SEASON3B
         void ProcessToReceiveYourItemDelete(BYTE byYourInvenIndex);
         void ProcessToReceiveYourItemAdd(BYTE byYourInvenIndex, std::span<const BYTE> pbyItemPacket);
         void ProcessToReceiveMyTradeGold(BYTE bySuccess);
+        void SendRequestMyResetsInput(int nInputResets);
+
+    private:
+        void RenderTradeAmount(int nGold, int nResets, int y);
+
+    public:
         void ProcessToReceiveYourConfirm(BYTE byState);
         void ProcessToReceiveTradeExit(BYTE byState);
         void ProcessToReceiveTradeItems(int nIndex, std::span<const BYTE> pbyItemPacket);

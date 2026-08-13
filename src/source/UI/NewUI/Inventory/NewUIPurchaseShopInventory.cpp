@@ -1,4 +1,4 @@
-// NewUIPurchaseShopInventory.cpp: implementation of the CNewUIPurchaseShopInventory class.
+﻿// NewUIPurchaseShopInventory.cpp: implementation of the CNewUIPurchaseShopInventory class.
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
@@ -272,7 +272,7 @@ void SEASON3B::CNewUIPurchaseShopInventory::RenderTextInfo()
     RenderText(Text, m_Pos.x + 30, m_Pos.y + 320, 0, 0, RGBA(255, 45, 47, 255), 0x00000000, RT3_SORT_LEFT, g_hFontBold);
 
     memset(&Text, 0, sizeof(wchar_t) * 100);
-    mu_swprintf(Text, I18N::Game::CanOnlyBeDoneUsingZen);
+    mu_swprintf(Text, I18N::Game::CanBeDoneUsingZenOrResets);
     RenderText(Text, m_Pos.x + 30, m_Pos.y + 332, 0, 0, RGBA(255, 45, 47, 255), 0x00000000, RT3_SORT_LEFT, g_hFontBold);
 }
 

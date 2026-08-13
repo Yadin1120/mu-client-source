@@ -114,6 +114,24 @@ template <typename T> T* safe_cast(const std::span<const BYTE> span, const char*
     return reinterpret_cast<T*>(const_cast<BYTE*>(span.data()));
 }
 
+// Same as safe_cast, but for packet structs whose last member is a fixed-size array
+// which the server fills only partially - the buff slots of the viewport packets are
+// the typical case. For those, sizeof(T) is the MAXIMUM size of the packet, not the
+// minimum: validating against it silently drops every packet that carries fewer
+// entries than the maximum. Pass the size of the fixed part instead; the caller must
+// validate the variable tail itself, once it has read the count out of the header.
+template <typename T> T* safe_cast_variable(const std::span<const BYTE> span, std::size_t fixed_size, const char* packet_type = nullptr)
+{
+    if (span.size() < fixed_size)
+    {
+        LogSafeCastSizeMismatch(packet_type ? packet_type : typeid(T).name(),
+                                span.size(), fixed_size);
+        return nullptr;
+    }
+
+    return reinterpret_cast<T*>(const_cast<BYTE*>(span.data()));
+}
+
 typedef struct
 {
     BYTE Code;

@@ -11,6 +11,7 @@
 #include <dpapi.h>
 #endif
 #include <clocale>
+#include "Core/Utilities/Log/CrashReport.h"
 #include "Data/GameConfig/GameConfig.h"
 #include "GameLogic/AntiCheat/SelfCheck.h"
 #include "UI/Legacy/UIWindows.h"
@@ -1529,6 +1530,11 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLin
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int nCmdShow)
 #endif
 {
+#ifdef _WIN32
+    // ראשון, לפני כל דבר אחר: מכאן והלאה קריסה משאירה עקבות במקום להיעלם.
+    MuCrash::Install();
+#endif
+
     wchar_t lpszExeVersion[256] = L"unknown";
 
     wchar_t* lpszCommandLine = GetCommandLine();

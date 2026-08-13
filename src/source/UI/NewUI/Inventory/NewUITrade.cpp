@@ -10,6 +10,7 @@
 #include "UI/NewUI/Dialogs/NewUICustomMessageBox.h"
 
 #include "GameLogic/Items/CComGem.h"
+#include "GameLogic/Items/PersonalShopTitleImp.h"
 #include "Audio/DSPlaySound.h"
 
 using namespace SEASON3B;
@@ -61,7 +62,9 @@ bool CNewUITrade::Create(CNewUIManager* pNewUIMng, int x, int y)
 
     m_abtn[BTN_ZEN_INPUT].ChangeButtonImgState(true, IMAGE_TRADE_BTN_ZEN_INPUT);
     m_abtn[BTN_ZEN_INPUT].ChangeButtonInfo(x + 104, y + 390, 36, 29);
-    m_abtn[BTN_ZEN_INPUT].ChangeToolTipText(&I18N::Game::ZenTrade, true);
+    // הטולטיפ של הכפתור הוא המקום שבו השחקן מסתכל רגע לפני הלחיצה, ולכן ההסבר
+    // על Shift חוזר גם כאן ולא רק בטקסט שבחלון.
+    m_abtn[BTN_ZEN_INPUT].ChangeToolTipText(&I18N::Game::ShiftTheZenButtonOffersResets, true);
 
     ::memset(m_szYourID, 0, MAX_USERNAME_SIZE + 1);
     m_bTradeAlert = false;
@@ -80,6 +83,14 @@ void CNewUITrade::InitTradeInfo()
     m_nYourGuildType = -1;
     m_nYourTradeGold = 0;
     m_nMyTradeGold = 0;
+
+    // ⚠️ המשתנה הזה לא אותחל כאן מעולם. זה לא הזיק כל עוד הוא נכתב תמיד רגע
+    // לפני השימוש בו, אבל אישור ההצעה משותף לשני המטבעות — ולכן הצעת ריסטים
+    // הייתה מעתיקה ממנו ערך ישן מעסקה קודמת אל שורת הזן שעל המסך.
+    m_nTempMyTradeGold = 0;
+    m_nYourTradeResets = 0;
+    m_nMyTradeResets = 0;
+    m_nTempMyTradeResets = 0;
     m_nMyTradeWait = 0;
     m_bYourConfirm = m_bMyConfirm = false;
 }
@@ -287,26 +298,22 @@ void CNewUITrade::RenderText()
     g_pRenderText->RenderText(m_Pos.x + 134, m_Pos.y + 48, L"Lv.");
     g_pRenderText->RenderText(m_Pos.x + 148, m_Pos.y + 48, szTemp);
 
-    ::ConvertGold(m_nYourTradeGold, szTemp);
-    g_pRenderText->SetTextColor(::getGoldColor(m_nYourTradeGold));
-    g_pRenderText->RenderText(
-        m_Pos.x + 170, m_Pos.y + 150 + 8, szTemp, 0, 0, RT3_WRITE_RIGHT_TO_LEFT);
-
-    ::ConvertGold(m_nMyTradeGold, szTemp);
-    g_pRenderText->SetTextColor(::getGoldColor(m_nMyTradeGold));
-    g_pRenderText->RenderText(
-        m_Pos.x + 170, m_Pos.y + 356 + 8, szTemp, 0, 0, RT3_WRITE_RIGHT_TO_LEFT);
+    // הריסטים נכתבים על אותה שורה כמו הזן ולא בשורה נוספת: לחלון החליפין פריסה
+    // קבועה שנשענת על תמונת רקע, ושורה חדשה הייתה נופלת על גרפיקה קיימת.
+    RenderTradeAmount(m_nYourTradeGold, m_nYourTradeResets, m_Pos.y + 150 + 8);
+    RenderTradeAmount(m_nMyTradeGold, m_nMyTradeResets, m_Pos.y + 356 + 8);
 
     g_pRenderText->SetTextColor(210, 230, 255, 255);
     g_pRenderText->RenderText(m_Pos.x + 20, m_Pos.y + 253, Hero->ID);
 
+    // ── אזהרת "בדוק את הרמה והפריטים" הוסרה (החלטת הבעלים, 13/08/2026) ──
+    // אין בחלון מקום פנוי, והמקום הזה שימושי יותר להסבר על המטבע השני: בלעדיו
+    // אין שום דרך לדעת ש-Shift עושה משהו, כי אין כפתור ואין תפריט שמרמזים על כך.
+    // הכיתוב מהבהב כמו האזהרה שהייתה כאן, כדי שהעין תיתפס אליו.
     int nAlpha = int(std::min<int>(255, sin(WorldTime / 200) * 200 + 275));
-    g_pRenderText->SetTextColor(210, 0, 0, nAlpha);
-    g_pRenderText->RenderText(m_Pos.x + 20, m_Pos.y + 185, I18N::Game::Warning);
-    g_pRenderText->SetTextColor(255, 220, 150, 255);
-    g_pRenderText->RenderText(m_Pos.x + 45, m_Pos.y + 185, I18N::Game::NoticePleaseCheckOut);
-    g_pRenderText->RenderText(m_Pos.x + 20, m_Pos.y + 200, I18N::Game::TheLevelOfThePlayer);
-    g_pRenderText->RenderText(m_Pos.x + 20, m_Pos.y + 215, I18N::Game::AndTheItemsBeforeTrading);
+    g_pRenderText->SetTextColor(150, 230, 255, nAlpha);
+    g_pRenderText->RenderText(m_Pos.x + 20, m_Pos.y + 193, I18N::Game::ClickingTheZenButtonZen);
+    g_pRenderText->RenderText(m_Pos.x + 20, m_Pos.y + 208, I18N::Game::ShiftClickResets);
 }
 
 void CNewUITrade::RenderWarningArrow()
@@ -507,13 +514,65 @@ void CNewUITrade::SendRequestMyGoldInput(int nInputGold)
         if (m_nMyTradeGold > 0)
             m_nMyTradeWait = 150;
 
+        // שומרים את ההצעה בשני המטבעות: האישור מהשרת מגיע במסלול אחד וכותב את
+        // שניהם, ולכן ערך שלא נשמר כאן היה נמחק מהמסך בהצעה הבאה.
         m_nTempMyTradeGold = nInputGold;
+        m_nTempMyTradeResets = m_nMyTradeResets;
         SocketClient->ToGameServer()->SendSetTradeMoney(nInputGold);
     }
     else
     {
         SEASON3B::CreateOkMessageBox(I18N::Game::YouAreShortOfZen);
     }
+}
+
+void CNewUITrade::SendRequestMyResetsInput(int nInputResets)
+{
+    // היתרה שהשרת דיווח עליה לאחרונה. השרת בודק שוב בעצמו — גם בהגשה וגם ברגע
+    // סגירת העסקה — ולכן הבדיקה כאן היא נוחות בלבד ולא שער.
+    if (nInputResets > GetPersonalShopResetBalance())
+    {
+        SEASON3B::CreateOkMessageBox(I18N::Game::YouAreShortOfResets);
+        return;
+    }
+
+    if (m_bMyConfirm)
+    {
+        m_bMyConfirm = false;
+        SocketClient->ToGameServer()->SendTradeButtonStateChange(TradeButtonState::Unchecked);
+    }
+
+    if (m_nMyTradeResets > 0)
+        m_nMyTradeWait = 150;
+
+    m_nTempMyTradeResets = nInputResets;
+    m_nTempMyTradeGold = m_nMyTradeGold;   // ראה ההערה ב-SendRequestMyGoldInput
+    SocketClient->ToGameServer()->SendSetTradeMoney(
+        static_cast<uint32_t>(nInputResets) | PERSONAL_SHOP_RESETS_PRICE_FLAG);
+}
+
+void CNewUITrade::RenderTradeAmount(int nGold, int nResets, int y)
+{
+    wchar_t szAmount[128] = { 0 };
+    wchar_t szGold[64] = { 0 };
+
+    ::ConvertGold(nGold, szGold);
+    if (nResets > 0)
+    {
+        wchar_t szResets[64] = { 0 };
+        mu_swprintf(szResets, L"%d", nResets);
+
+        wchar_t szResetsLine[96] = { 0 };
+        mu_swprintf(szResetsLine, I18N::Game::SellingPriceResetsS, szResets);
+        mu_swprintf(szAmount, L"%ls  |  %ls", szGold, szResetsLine);
+    }
+    else
+    {
+        wcscpy(szAmount, szGold);
+    }
+
+    g_pRenderText->SetTextColor(::getGoldColor(nGold));
+    g_pRenderText->RenderText(m_Pos.x + 170, y, szAmount, 0, 0, RT3_WRITE_RIGHT_TO_LEFT);
 }
 
 void CNewUITrade::ProcessCloseBtn()
@@ -764,6 +823,7 @@ void CNewUITrade::AlertYourTradeInven()
 void CNewUITrade::ProcessToReceiveMyTradeGold(BYTE bySuccess)
 {
     m_nMyTradeGold = bySuccess ? m_nTempMyTradeGold : 0;
+    m_nMyTradeResets = bySuccess ? m_nTempMyTradeResets : 0;
 }
 
 void CNewUITrade::ProcessToReceiveYourConfirm(BYTE byState)

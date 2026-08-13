@@ -261,6 +261,23 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     WIN32_EXECUTABLE TRUE
   )
 
+  if (MSVC)
+    # סמלי דיבאג גם בבנייה שמופצת לשחקנים.
+    #
+    # בלי זה, ‏Release של MSVC לא מייצר pdb כלל, וכל דיווח קריסה נשאר כתובת
+    # מספרית שאי אפשר לתרגם לשם פונקציה. ה-pdb **לא נשלח לשחקנים** — הוא נשמר
+    # בבית ליד הבינארי שפורסם, ומפענח את ההיסטים שמופיעים ב-MuError.log
+    # ובקובץ ה-minidump (ראה Core/Utilities/Log/CrashReport.cpp).
+    #
+    # ‏/Zi ו-/DEBUG אינם משנים את הקוד שנוצר — הם רק מוסיפים טבלת סמלים נפרדת
+    # וערך בספריית הדיבאג של ה-exe. אבל ⚠️ ‏/DEBUG **מכבה כברירת מחדל את
+    # /OPT:REF ו-/OPT:ICF**, ובלי להחזיר אותם במפורש הבינארי המופץ היה גדל
+    # ומאבד אופטימיזציות קישור — מלכודת ידועה של MSVC.
+    target_compile_options(Main PRIVATE $<$<CONFIG:Release>:/Zi>)
+    target_link_options(Main PRIVATE $<$<CONFIG:Release>:/DEBUG /OPT:REF /OPT:ICF>)
+    target_compile_options(MuClient PRIVATE $<$<CONFIG:Release>:/Zi>)
+  endif()
+
   enable_language(RC)
   target_sources(Main PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/source/App/Platform/Windows/resource.rc"

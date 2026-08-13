@@ -10,6 +10,15 @@
 #include "UI/Legacy/UIManager.h"
 #include "UI/NewUI/NewUISystem.h"
 #include "Camera/CameraProjection.h"
+#include "GameShop/InGameShopSystem.h"
+
+int GetPersonalShopResetBalance()
+{
+    // אותו שדה שמאזן חנות ה-X מציג בשורה השנייה. הוא מתעדכן בכל פעם שהשרת שולח
+    // מאזן — כולל מיד אחרי מכירה או קנייה בריסטים — ולכן הוא המספר הטרי ביותר
+    // שיש לקליינט בלי לצאת ולהיכנס לדמות.
+    return static_cast<int>(g_InGameShopSystem->GetCashPrepaid());
+}
 
 CPersonalShopTitleImp::CPersonalShopTitleImp() : m_iHighlightFrame(0), m_bShow(true)
 {}

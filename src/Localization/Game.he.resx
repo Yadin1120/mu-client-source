@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
@@ -2722,4 +2722,18 @@
   <data name="to create a party with" xml:space="preserve"><value>להקים חבורה</value></data>
   <data name="you must enter your vault password." xml:space="preserve"><value>עליך להזין את סיסמת הכספת.</value></data>
   <data name="your party members based on level." xml:space="preserve"><value>חברי החבורה, בהתאם לרמות.</value></data>
+  <data name="Selling price (resets): %s" xml:space="preserve"><value>מחיר: %s ריסטים</value></data>
+  <data name="You are short of resets." xml:space="preserve"><value>אין לך מספיק ריסטים.</value></data>
+  <data name="Enter selling price (resets)." xml:space="preserve"><value>הכנס מחיר בריסטים.</value></data>
+  <data name="Right click sets a zen price. Shift + right click sets a price in resets." xml:space="preserve"><value>לחיצה ימנית = מחיר בזן. Shift + ימנית = מחיר בריסטים.</value></data>
+  <data name="can be done using zen or resets." xml:space="preserve"><value>מתבצע בזן או בריסטים.</value></data>
+  <data name="Shift + the zen button offers resets." xml:space="preserve"><value>Shift + כפתור הזן = הצעה בריסטים</value></data>
+  <data name="the level and the items of the player." xml:space="preserve"><value>את רמת השחקן ואת הפריטים.</value></data>
+  <data name="Right click = zen, Shift = resets" xml:space="preserve"><value>ימנית = זן · Shift = ריסטים</value></data>
+  <data name="Clicking the zen button = zen" xml:space="preserve"><value>לחיצה על כפתור הזן = זן</value></data>
+  <data name="Shift + click = resets" xml:space="preserve"><value>לחיצה עם Shift = ריסטים</value></data>
+  <data name="Right click = price in zen" xml:space="preserve"><value>לחיצה ימנית = מחיר בזן</value></data>
+  <data name="Shift + right click = price in resets" xml:space="preserve"><value>Shift + ימנית = מחיר בריסטים</value></data>
+  <data name="Want to sell for resets instead of zen?" xml:space="preserve"><value>למכור בריסטים במקום בזן?</value></data>
+  <data name="Hold Shift when you right click" xml:space="preserve"><value>החזק Shift בלחיצה הימנית</value></data>
 </root>

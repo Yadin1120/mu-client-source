@@ -305,6 +305,10 @@ void RenderColor(float x, float y, float Width, float Height, float Alpha, int F
 
 void CUIWindowMgr::Render()
 {
+    // כאן, ורק כאן, מטופלות פקטות הצ׳אט שהגיעו מחוט הרשת — לפני שמתחילים לעבור על
+    // החלונות. טיפול בהן תוך כדי המעבר היה משנה את הרשימות מתחת לרגליים של הציור.
+    CUIChatWindow::DispatchPendingPackets();
+
     for (m_WindowArrangeListIter = m_WindowArrangeList.begin(); m_WindowArrangeListIter != m_WindowArrangeList.end(); ++m_WindowArrangeListIter)
     {
         m_WindowMapIter = m_WindowMap.find(*m_WindowArrangeListIter);
@@ -1382,11 +1386,53 @@ void CUIChatWindow::Refresh()
 
 void TranslateChattingProtocol(DWORD dwWindowUIID, const BYTE* ReceiveBuffer, int Size);
 
+// 🔴 נקרא **מחוט הרשת**, לא מחוט הציור.
+//
+// עד 10/08/2026 הפונקציה הזו טיפלה בפקטה במקום, כלומר כתבה ישירות לתיבות הרשימה
+// של החלון בזמן שחוט הציור עבר עליהן. `CUISimpleChatListBox::AddText` עושה
+// `m_TextList.push_front`, וזה מבטל את האיטרטור ש-`RenderDataLine` מחזיק ביד —
+// והמשחק קרס בגישה לזיכרון משוחרר (‏UIControls.cpp:1506, אומת מול קובץ הסמלים של
+// הבינארי שקרס בפועל). הבאג ישן כמו הקליינט; הוא לא התגלה כי חדרי הצ׳אט לא היו
+// בשימוש, וברגע שפסל ה-GM התחיל לדבר דרכם הוא הופיע מיד.
+//
+// בנוסף, `find(handle)->second` היה מפענח את `end()` בלי שום בדיקה כשההדסקריפטור
+// לא במפה — התנהגות בלתי מוגדרת בפני עצמה.
 void CUIChatWindow::HandlePacketS(int32_t handle, const BYTE* ReceiveBuffer, int32_t Size)
 {
-    if (const auto uuid = ConnectionHandleToWindowUuid.find(handle)->second)
+    if (ReceiveBuffer == nullptr || Size <= 0)
     {
-        TranslateChattingProtocol(uuid, ReceiveBuffer, Size);
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(s_PendingMutex);
+
+    const auto it = ConnectionHandleToWindowUuid.find(handle);
+    if (it == ConnectionHandleToWindowUuid.end() || it->second == 0)
+    {
+        return;
+    }
+
+    s_PendingPackets.push_back(PendingChatPacket{ it->second, std::vector<BYTE>(ReceiveBuffer, ReceiveBuffer + Size) });
+}
+
+// מרוקן את התור בחוט הציור. נקרא מ-`CUIWindowMgr::Render`, לפני שהוא מתחיל לעבור
+// על החלונות — כך שכל שינוי ברשימות קורה מחוץ למעבר עליהן.
+void CUIChatWindow::DispatchPendingPackets()
+{
+    std::vector<PendingChatPacket> batch;
+    {
+        std::lock_guard<std::mutex> lock(s_PendingMutex);
+        if (s_PendingPackets.empty())
+        {
+            return;
+        }
+
+        batch.swap(s_PendingPackets);
+    }
+
+    for (const auto& packet : batch)
+    {
+        TranslateChattingProtocol(packet.m_dwWindowUIID, packet.m_Data.data(), static_cast<int>(packet.m_Data.size()));
     }
 }
 
@@ -1402,7 +1448,12 @@ void CUIChatWindow::ConnectToChatServer(const wchar_t* pszIP, DWORD dwRoomNumber
         return;
     }
 
-    ConnectionHandleToWindowUuid[_connection->GetHandle()] = this->GetUIID();
+    {
+        // אותו מנעול כמו בקריאה מחוט הרשת — אחרת המפה משתנה בזמן שמחפשים בה.
+        std::lock_guard<std::mutex> lock(s_PendingMutex);
+        ConnectionHandleToWindowUuid[_connection->GetHandle()] = this->GetUIID();
+    }
+
     _connection->ToChatServer()->SendAuthenticateExt(dwRoomNumber, dwTicket);
 }
 
@@ -1410,6 +1461,13 @@ void CUIChatWindow::DisconnectToChatServer()
 {
     if (_connection != nullptr)
     {
+        {
+            // מסירים את ההדסקריפטור מהמפה לפני הסגירה: פקטה שתגיע אחר כך תמצא
+            // חלון שכבר לא קיים, והמפה הייתה גדלה בלי גבול לאורך המשחק.
+            std::lock_guard<std::mutex> lock(s_PendingMutex);
+            ConnectionHandleToWindowUuid.erase(_connection->GetHandle());
+        }
+
         if (_connection->IsConnected())
         {
             _connection->ToChatServer()->SendLeaveChatRoom();
