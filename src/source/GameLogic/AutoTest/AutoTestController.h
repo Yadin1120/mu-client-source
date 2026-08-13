@@ -36,6 +36,15 @@ public:
         const char* label;
     };
 
+    // One entry per NPC the town tour hails. Same shape as TourEntry, and
+    // public for the same reason: the table itself lives in the .cpp. Keyed by
+    // the monster/NPC number the server assigns rather than a window id.
+    struct NpcEntry
+    {
+        int monsterIndex;
+        const char* label;
+    };
+
 private:
     AutoTestController() = default;
 
@@ -57,14 +66,6 @@ private:
         NpcDialogue,    // photograph whatever window it answered with
         Done,
         Failed,
-    };
-
-    // One entry per NPC the town tour hails. Same shape as TourEntry, but keyed
-    // by the monster/NPC number the server assigns rather than a window id.
-    struct NpcEntry
-    {
-        int monsterIndex;
-        const char* label;
     };
 
     void EnterStep(Step step, const char* label);
