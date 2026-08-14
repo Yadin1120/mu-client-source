@@ -9579,6 +9579,19 @@ void ReceiveDisplayEffectViewport(const BYTE* ReceiveBuffer)
                 }
             }
             break;
+            case 0x20:	// custom: fireworks celebration (character reset) - sent by ResetCharacterAction on the server.
+            {
+                // The wedding-NPC burst display (anchored to the object position, so it is
+                // height-correct on any map) plus three rising crackers that explode with
+                // sound. BITMAP_FIRECRACKERRISE is NOT used here on purpose: its create
+                // handler hardcodes Position[2]=100, which is underground on most maps.
+                CreateEffect(BITMAP_FIRECRACKER0001, o->Position, o->Angle, o->Light, 0);
+                for (int i = 0; i < 3; ++i)
+                {
+                    CreateEffect(BITMAP_FIRECRACKER, o->Position, o->Angle, o->Light);
+                }
+            }
+            break;
             }	//. end of switch
         }	//. end of (o->Kind == KIND_PLAYER)
     }
