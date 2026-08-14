@@ -14776,6 +14776,13 @@ static void ProcessPacket(const BYTE* ReceiveBuffer, int32_t Size)
         case 0x20:
             Network::MuPass::ReceiveStatus(ReceiveBuffer);
             break;
+        case 0x23:	// custom: live reset-counter update, sent when the earned counter rises
+            // (reset / GM grant). The counter otherwise only arrives in the full
+            // character-info packet, which cannot be re-sent mid-game because the
+            // client treats it as a new spawn and draws a second copy of the player.
+            // The character info window (C) reads this variable every frame.
+            CharacterAttribute->Resets = *(WORD*)(ReceiveBuffer + sizeof(PBMSG_HEADER2));
+            break;
         case 0x01:
             ReceiveIGS_CashPoint(ReceiveBuffer);
             break;
