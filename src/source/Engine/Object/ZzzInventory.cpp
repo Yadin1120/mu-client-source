@@ -7816,6 +7816,19 @@ bool IsDropBan(ITEM* pItem)
     return false;
 }
 
+// ‏האם הדמות שאני משחק בה היא GM. השרת שולח את `CharacterStatus` (‏32 = GM)
+// ‏בבייט ה-`CtlCode` של פקטת הכניסה למפה, ולכן הקליינט יודע את זה כבר בכניסה.
+// ‏משמש כדי לתת ל-GM לזרוק לרצפה כל פריט, גם כזה שחסום לשחקנים רגילים.
+bool IsHeroGameMaster()
+{
+    if (Hero == NULL)
+    {
+        return false;
+    }
+
+    return (Hero->CtlCode == CTLCODE_20OPERATOR) || (Hero->CtlCode == CTLCODE_08OPERATOR);
+}
+
 bool IsSellingBan(ITEM* pItem)
 {
     int Level = pItem->Level;

@@ -53,7 +53,7 @@ enum SKILL_TOOLTIP_RENDER_POINT
     STRP_BOOTOMRIGHT
 };
 
-// ¼¼À²Á¤º¸
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
 extern int		g_nTaxRate;
 extern int		g_nChaosTaxRate;
@@ -77,7 +77,7 @@ extern int			GuildTotalScore;
 extern int AllRepairGold;
 
 //////////////////////////////////////////////////////////////////////////
-// text °ü·Ã
+// text ï¿½ï¿½ï¿½ï¿½
 //////////////////////////////////////////////////////////////////////////
 extern wchar_t TextList[50][100];
 extern int TextListColor[50];
@@ -190,6 +190,8 @@ bool IsHighValueItem(ITEM* pItem);
 bool IsPersonalShopBan(ITEM* pItem);
 bool IsTradeBan(ITEM* pItem);
 bool IsDropBan(ITEM* pItem);
+// True when the character we play is a game master (CtlCode comes from the server).
+bool IsHeroGameMaster();
 bool IsStoreBan(ITEM* pItem);
 bool IsSellingBan(ITEM* pItem);
 bool IsRepairBan(ITEM* pItem);

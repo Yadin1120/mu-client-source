@@ -485,14 +485,18 @@ bool CNewUIMyInventory::UpdateMouseEvent()
         }
 
         ITEM* pItemObj = pPickedItem->GetItem();
-        if (pItemObj && pItemObj->Jewel_Of_Harmony_Option != 0)
+
+        // ‏GM זורק לרצפה כל פריט בלי הגבלה; המגבלות נשארות בתוקף לשחקנים רגילים.
+        const bool bIsGameMaster = IsHeroGameMaster();
+
+        if (!bIsGameMaster && pItemObj && pItemObj->Jewel_Of_Harmony_Option != 0)
         {
             g_pSystemLogBox->AddText(I18N::Game::ReinforcedItemCanTBeDropped, TYPE_ERROR_MESSAGE);
 
             ResetMouseLButton();
             return false;
         }
-        if (pItemObj && IsHighValueItem(pItemObj) == true)
+        if (!bIsGameMaster && pItemObj && IsHighValueItem(pItemObj) == true)
         {
             g_pSystemLogBox->AddText(I18N::Game::YouAreNotAllowedToDropThisExpensiveItem, TYPE_ERROR_MESSAGE);
             CNewUIInventoryCtrl::BackupPickedItem();
@@ -500,7 +504,7 @@ bool CNewUIMyInventory::UpdateMouseEvent()
             ResetMouseLButton();
             return false;
         }
-        if (pItemObj && IsDropBan(pItemObj))
+        if (!bIsGameMaster && pItemObj && IsDropBan(pItemObj))
         {
             g_pSystemLogBox->AddText(I18N::Game::ThisItemCannotBeDropped, TYPE_ERROR_MESSAGE);
             CNewUIInventoryCtrl::BackupPickedItem();

@@ -414,13 +414,16 @@ bool CNewUIInventoryActionController::TryDropItem(CNewUIInventoryCtrl* targetCon
         return false;
     }
 
-    if (IsHighValueItem(pItem))
+    // A game master may drop anything to the floor; the guards below stay in place for normal players.
+    const bool bIsGameMaster = IsHeroGameMaster();
+
+    if (!bIsGameMaster && IsHighValueItem(pItem))
     {
         g_pSystemLogBox->AddText(I18N::Game::YouAreNotAllowedToDropThisExpensiveItem, TYPE_ERROR_MESSAGE);
         return true;
     }
 
-    if (IsDropBan(pItem))
+    if (!bIsGameMaster && IsDropBan(pItem))
     {
         g_pSystemLogBox->AddText(I18N::Game::ThisItemCannotBeDropped, TYPE_ERROR_MESSAGE);
         return true;
