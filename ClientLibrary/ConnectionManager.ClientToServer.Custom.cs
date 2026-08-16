@@ -72,6 +72,46 @@ public unsafe partial class ConnectionManager
     }
 
     /// <summary>
+    /// Sends an <see cref="IncreaseCharacterStatPoint" /> (0xF3, 0x06) with an amount of points
+    /// appended after the stat type, so the player can add several points at once from the
+    /// character info window. The published packet is 5 bytes long and has no amount field, so
+    /// this longer form is written as raw bytes here; the server falls back to a single point
+    /// when the packet arrives without the amount.
+    /// </summary>
+    /// <param name="handle">The handle of the connection.</param>
+    /// <param name="statType">The stat type (0 = strength, 1 = agility, 2 = vitality, 3 = energy, 4 = command).</param>
+    /// <param name="amount">The number of points to add.</param>
+    [UnmanagedCallersOnly(EntryPoint = "SendIncreaseCharacterStatPointMultiple")]
+    public static void SendIncreaseCharacterStatPointMultiple(int handle, byte @statType, ushort @amount)
+    {
+        if (!Connections.TryGetValue(handle, out var connection))
+        {
+            return;
+        }
+
+        try
+        {
+            connection.CreateAndSend(pipeWriter =>
+            {
+                const int length = 7;
+                var span = pipeWriter.GetSpan(length)[..length];
+                span[0] = 0xC1;
+                span[1] = length;
+                span[2] = 0xF3;
+                span[3] = 0x06;
+                span[4] = statType;
+                span[5] = (byte)(amount >> 8);
+                span[6] = (byte)amount;
+                return length;
+            });
+        }
+        catch
+        {
+            // Log exception
+        }
+    }
+
+    /// <summary>
     /// Sends a MuPassStatusRequest (0xD2, 0x20). This is a custom packet of this server,
     /// not part of the published MUnique.OpenMU.Network.Packets package, so it's written
     /// as raw bytes in this hand-written (non-generated) file.

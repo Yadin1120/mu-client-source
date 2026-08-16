@@ -17,12 +17,38 @@
 #include "UI/Legacy/UIJewelHarmony.h"
 #include "UI/Legacy/UIManager.h"
 #include "Network/Server/ServerListManager.h"
+#include "Dotnet/Connection.h"
 #include "I18N/All.h"
 
 using namespace SEASON3B;
 
 namespace
 {
+    // הוספת כמה נקודות בבת אחת: הפונקציה מיוצאת ידנית מ-MUnique.Client.Library
+    // (ConnectionManager.ClientToServer.Custom.cs), כי לפקטה המפורסמת אין שדה כמות,
+    // ולכן היא נטענת ישירות ולא דרך הכריכות המחוללות.
+    using SendStatPointsFn = void(CORECLR_DELEGATE_CALLTYPE*)(int32_t, uint8_t, uint16_t);
+
+    void SendIncreaseStatPoints(int iStat, int iAmount)
+    {
+        if (SocketClient == nullptr)
+        {
+            return;
+        }
+
+        const int iHandle = SocketClient->GetHandle();
+        if (iHandle < 0)
+        {
+            return;
+        }
+
+        static SendStatPointsFn s_pfn = LoadManagedSymbol<SendStatPointsFn>("SendIncreaseCharacterStatPointMultiple");
+        if (s_pfn != nullptr)
+        {
+            s_pfn(iHandle, static_cast<uint8_t>(iStat), static_cast<uint16_t>(iAmount));
+        }
+    }
+
     float GetMasterSkillValue(ActionSkillType skill)
     {
         return CharacterAttribute->MasterSkillInfo[skill].GetSkillValue();
@@ -66,6 +92,11 @@ SEASON3B::CNewUICharacterInfoWindow::CNewUICharacterInfoWindow()
 {
     m_pNewUIMng = NULL;
     m_Pos.x = m_Pos.y = 0;
+
+    for (int i = 0; i < BTN_STAT_COUNT; ++i)
+    {
+        m_pStatAmountBox[i] = NULL;
+    }
 }
 
 SEASON3B::CNewUICharacterInfoWindow::~CNewUICharacterInfoWindow()
@@ -87,7 +118,121 @@ bool SEASON3B::CNewUICharacterInfoWindow::Create(CNewUIManager* pNewUIMng, int x
 
     SetButtonInfo();
 
+    CreateStatAmountBoxes();
+
     Show(false);
+
+    return true;
+}
+
+int SEASON3B::CNewUICharacterInfoWindow::GetStatCount() const
+{
+    return (gCharacterManager.GetBaseClass(Hero->Class) == CLASS_DARK_LORD) ? 5 : 4;
+}
+
+int SEASON3B::CNewUICharacterInfoWindow::GetStatAmountY(int iStat) const
+{
+    switch (iStat)
+    {
+    case STAT_STRENGTH:		return HEIGHT_STRENGTH;
+    case STAT_DEXTERITY:	return HEIGHT_DEXTERITY;
+    case STAT_VITALITY:		return HEIGHT_VITALITY;
+    case STAT_ENERGY:		return HEIGHT_ENERGY;
+    default:				return HEIGHT_CHARISMA;
+    }
+}
+
+void SEASON3B::CNewUICharacterInfoWindow::CreateStatAmountBoxes()
+{
+    for (int i = 0; i < BTN_STAT_COUNT; ++i)
+    {
+        if (m_pStatAmountBox[i] == NULL)
+        {
+            m_pStatAmountBox[i] = new CUITextInputBox;
+            m_pStatAmountBox[i]->Init(g_hWnd, AMOUNT_BOX_WIDTH, AMOUNT_BOX_HEIGHT, AMOUNT_MAX_DIGITS);
+            m_pStatAmountBox[i]->SetTextColor(255, 255, 230, 210);
+            m_pStatAmountBox[i]->SetBackColor(0, 0, 0, 25);
+            m_pStatAmountBox[i]->SetFont(g_hFont);
+            m_pStatAmountBox[i]->SetOption(UIOPTION_NUMBERONLY | UIOPTION_ENTERIMECHKOFF);
+            m_pStatAmountBox[i]->SetState(UISTATE_HIDE);
+        }
+    }
+
+    SetStatAmountBoxInfo();
+}
+
+void SEASON3B::CNewUICharacterInfoWindow::SetStatAmountBoxInfo()
+{
+    for (int i = 0; i < BTN_STAT_COUNT; ++i)
+    {
+        const int iY = m_Pos.y + GetStatAmountY(i) + AMOUNT_OFFSET_Y;
+
+        if (m_pStatAmountBox[i] != NULL)
+        {
+            m_pStatAmountBox[i]->SetPosition(m_Pos.x + AMOUNT_OFFSET_X + 3, iY + 1);
+        }
+
+        m_BtnStatAmount[i].ChangeButtonImgState(true, IMAGE_CHAINFO_BTN_STAT, false);
+        m_BtnStatAmount[i].ChangeButtonInfo(m_Pos.x + 160, iY, 16, 15);
+    }
+}
+
+void SEASON3B::CNewUICharacterInfoWindow::ReleaseStatAmountBoxes()
+{
+    for (int i = 0; i < BTN_STAT_COUNT; ++i)
+    {
+        SAFE_DELETE(m_pStatAmountBox[i]);
+    }
+}
+
+void SEASON3B::CNewUICharacterInfoWindow::ShowStatAmountBoxes(bool bShow)
+{
+    const int iCount = GetStatCount();
+
+    for (int i = 0; i < BTN_STAT_COUNT; ++i)
+    {
+        if (m_pStatAmountBox[i] == NULL)
+        {
+            continue;
+        }
+
+        // SetState(UISTATE_HIDE) גם משחרר את הפוקוס, כך שסגירת החלון לא משאירה
+        // את המקלדת תקועה בתיבה שכבר לא מוצגת.
+        const bool bVisible = bShow && i < iCount;
+        m_pStatAmountBox[i]->SetState(bVisible ? UISTATE_NORMAL : UISTATE_HIDE);
+    }
+}
+
+bool SEASON3B::CNewUICharacterInfoWindow::SubmitStatAmount(int iStat)
+{
+    if (iStat < 0 || iStat >= BTN_STAT_COUNT || m_pStatAmountBox[iStat] == NULL)
+    {
+        return false;
+    }
+
+    wchar_t strAmount[AMOUNT_MAX_DIGITS + 1] = { 0 };
+    m_pStatAmountBox[iStat]->GetText(strAmount, AMOUNT_MAX_DIGITS + 1);
+
+    int iAmount = _wtoi(strAmount);
+    if (iAmount <= 0)
+    {
+        return false;
+    }
+
+    // מי שמקליד יותר ממה שיש לו מקבל את מה שיש - זו הדרך לחלק "הכל" בלחיצה אחת.
+    if (iAmount > CharacterAttribute->LevelUpPoint)
+    {
+        iAmount = CharacterAttribute->LevelUpPoint;
+    }
+
+    if (iAmount <= 0)
+    {
+        return false;
+    }
+
+    SendIncreaseStatPoints(iStat, iAmount);
+    m_pStatAmountBox[iStat]->SetText(NULL);
+    PlayBuffer(SOUND_CLICK01);
 
     return true;
 }
@@ -132,6 +277,8 @@ void SEASON3B::CNewUICharacterInfoWindow::Release()
 {
     UnloadImages();
 
+    ReleaseStatAmountBoxes();
+
     if (m_pNewUIMng)
     {
         m_pNewUIMng->RemoveUIObj(this);
@@ -143,10 +290,47 @@ void SEASON3B::CNewUICharacterInfoWindow::SetPos(int x, int y)
 {
     m_Pos.x = x;
     m_Pos.y = y;
+
+    SetStatAmountBoxInfo();
 }
 
 bool SEASON3B::CNewUICharacterInfoWindow::UpdateMouseEvent()
 {
+    if (CharacterAttribute->LevelUpPoint > 0)
+    {
+        const int iCount = GetStatCount();
+        bool bMouseInAnyBox = false;
+        bool bAnyBoxFocused = false;
+
+        for (int i = 0; i < iCount; ++i)
+        {
+            if (m_pStatAmountBox[i] == NULL)
+            {
+                continue;
+            }
+
+            m_pStatAmountBox[i]->DoAction();
+
+            const int iY = m_Pos.y + GetStatAmountY(i) + AMOUNT_OFFSET_Y;
+            if (CheckMouseIn(m_Pos.x + AMOUNT_OFFSET_X, iY - 3, AMOUNT_BOX_WIDTH + 6, AMOUNT_BOX_HEIGHT + 8))
+            {
+                bMouseInAnyBox = true;
+            }
+
+            if (m_pStatAmountBox[i]->HaveFocus() == TRUE)
+            {
+                bAnyBoxFocused = true;
+            }
+        }
+
+        // לחיצה בתוך החלון מחוץ לתיבות משחררת את הפוקוס. בלי זה המקלדת נשארת
+        // "תקועה" בתיבה, והמקשים במשחק מפסיקים להגיב עד שסוגרים את החלון.
+        if (bAnyBoxFocused && bMouseInAnyBox == false && MouseLButtonPush)
+        {
+            CUITextInputBox::ReleaseFocus();
+        }
+    }
+
     if (BtnProcess() == true)
     {
         return false;
@@ -186,6 +370,12 @@ bool SEASON3B::CNewUICharacterInfoWindow::BtnProcess()
                 PlayBuffer(SOUND_CLICK01);
                 return true;
             }
+
+            if (m_BtnStatAmount[i].UpdateMouseEvent() == true)
+            {
+                SubmitStatAmount(i);
+                return true;
+            }
         }
     }
 
@@ -221,6 +411,20 @@ bool SEASON3B::CNewUICharacterInfoWindow::UpdateKeyEvent()
 {
     if (g_pNewUISystem->IsVisible(SEASON3B::INTERFACE_CHARACTER) == true)
     {
+        // Enter בתוך תיבת הכמות שווה ללחיצה על הפלוס שלידה.
+        if (SEASON3B::IsPress(VK_RETURN) == true)
+        {
+            const int iCount = GetStatCount();
+            for (int i = 0; i < iCount; ++i)
+            {
+                if (m_pStatAmountBox[i] != NULL && m_pStatAmountBox[i]->HaveFocus() == TRUE)
+                {
+                    SubmitStatAmount(i);
+                    return false;
+                }
+            }
+        }
+
         if (SEASON3B::IsPress(VK_ESCAPE) == true)
         {
             g_pNewUISystem->Hide(SEASON3B::INTERFACE_CHARACTER);
@@ -235,6 +439,45 @@ bool SEASON3B::CNewUICharacterInfoWindow::UpdateKeyEvent()
 
 bool SEASON3B::CNewUICharacterInfoWindow::Update()
 {
+    // תיבות הכמות מוצגות רק כשיש נקודות לחלק, בדיוק כמו כפתורי הפלוס עצמם.
+    const bool bShowAmountBoxes = IsVisible() && CharacterAttribute->LevelUpPoint > 0;
+    ShowStatAmountBoxes(bShowAmountBoxes);
+
+    if (bShowAmountBoxes == false)
+    {
+        if (GetRelatedWnd() != g_hWnd)
+        {
+            SetRelatedWnd(g_hWnd);
+        }
+
+        return true;
+    }
+
+    // כשתיבה מקבלת פוקוס, מקשי המשחק צריכים להישאר שקטים: ניתוב מקשי המקלדת
+    // עובר דרך החלון שה-RelatedWnd שלו מזוהה עם התיבה הממוקדת.
+    CUITextInputBox* pFocusedBox = NULL;
+    const int iCount = GetStatCount();
+    for (int i = 0; i < iCount; ++i)
+    {
+        if (m_pStatAmountBox[i] != NULL && m_pStatAmountBox[i]->HaveFocus() == TRUE)
+        {
+            pFocusedBox = m_pStatAmountBox[i];
+            break;
+        }
+    }
+
+    if (pFocusedBox != NULL)
+    {
+        if (GetRelatedWnd() != pFocusedBox->GetHandle())
+        {
+            SetRelatedWnd(pFocusedBox->GetHandle());
+        }
+    }
+    else if (GetRelatedWnd() != g_hWnd)
+    {
+        SetRelatedWnd(g_hWnd);
+    }
+
     return true;
 }
 
@@ -288,8 +531,50 @@ bool SEASON3B::CNewUICharacterInfoWindow::Render()
     RenderFrame();
     RenderTexts();
     RenderButtons();
+    RenderStatAmountBoxes();
     DisableAlphaBlend();
     return true;
+}
+
+void SEASON3B::CNewUICharacterInfoWindow::RenderStatAmountBoxes()
+{
+    if (CharacterAttribute->LevelUpPoint <= 0)
+    {
+        return;
+    }
+
+    const int iCount = GetStatCount();
+
+    glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+
+    for (int i = 0; i < iCount; ++i)
+    {
+        const int iY = m_Pos.y + GetStatAmountY(i) + AMOUNT_OFFSET_Y;
+
+        RenderImage(IMAGE_CHAINFO_TEXTBOX, m_Pos.x + AMOUNT_OFFSET_X, iY - 1,
+            static_cast<float>(AMOUNT_BOX_WIDTH + 6), static_cast<float>(AMOUNT_BOX_HEIGHT + 3));
+
+        if (m_pStatAmountBox[i] == NULL)
+        {
+            continue;
+        }
+
+        m_pStatAmountBox[i]->Render();
+
+        // רמז "כמות" בתוך התיבה הריקה, כדי שיהיה ברור למה היא שם. נעלם ברגע
+        // שמתחילים להקליד או ללחוץ עליה, כדי לא להתערבב עם המספר ועם הסמן.
+        wchar_t strAmount[AMOUNT_MAX_DIGITS + 1] = { 0 };
+        m_pStatAmountBox[i]->GetText(strAmount, AMOUNT_MAX_DIGITS + 1);
+
+        if (strAmount[0] == L'\0' && m_pStatAmountBox[i]->HaveFocus() == FALSE)
+        {
+            g_pRenderText->SetFont(g_hFontBold);
+            g_pRenderText->SetTextColor(255, 190, 70, 255);
+            g_pRenderText->SetBgColor(0);
+            g_pRenderText->RenderText(m_Pos.x + AMOUNT_OFFSET_X, iY + 1, I18N::Game::Quantity,
+                AMOUNT_BOX_WIDTH + 6, 0, RT3_SORT_CENTER);
+        }
+    }
 }
 
 void SEASON3B::CNewUICharacterInfoWindow::RenderTexts()
@@ -1545,6 +1830,7 @@ void SEASON3B::CNewUICharacterInfoWindow::RenderButtons()
         for (int i = 0; i < iCount; ++i)
         {
             m_BtnStat[i].Render();
+            m_BtnStatAmount[i].Render();
         }
     }
 

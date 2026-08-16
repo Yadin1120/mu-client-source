@@ -8,6 +8,8 @@
 #include "UI/NewUI/Inventory/NewUIMyInventory.h"
 #include "UI/NewUI/Widgets/NewUIButton.h"
 
+class CUITextInputBox;
+
 namespace SEASON3B
 {
     class CNewUICharacterInfoWindow : public CNewUIObj
@@ -54,6 +56,14 @@ namespace SEASON3B
             STAT_VITALITY,
             STAT_ENERGY,
             STAT_CHARISMA,
+
+            // שורת "כמה נקודות להוסיף": תיבת מספר וכפתור אישור, מתחת לכל סטט,
+            // בצד ימין של השורה כדי לא להתנגש בטקסטי הנזק/ההגנה שמתחילים משמאל.
+            AMOUNT_OFFSET_X = 116,
+            AMOUNT_OFFSET_Y = 23,
+            AMOUNT_BOX_WIDTH = 40,
+            AMOUNT_BOX_HEIGHT = 14,
+            AMOUNT_MAX_DIGITS = 5,
         };
 
     private:
@@ -61,6 +71,8 @@ namespace SEASON3B
         POINT						m_Pos;
 
         CNewUIButton m_BtnStat[BTN_STAT_COUNT];
+        CNewUIButton m_BtnStatAmount[BTN_STAT_COUNT];
+        CUITextInputBox* m_pStatAmountBox[BTN_STAT_COUNT];
         CNewUIButton m_BtnExit;
         CNewUIButton m_BtnQuest;
         CNewUIButton m_BtnPet;
@@ -85,6 +97,14 @@ namespace SEASON3B
         void ResetEquipmentLevel();
         void SetButtonInfo();
         bool BtnProcess();
+        void CreateStatAmountBoxes();
+        void SetStatAmountBoxInfo();
+        void ReleaseStatAmountBoxes();
+        void ShowStatAmountBoxes(bool bShow);
+        bool SubmitStatAmount(int iStat);
+        int GetStatCount() const;
+        int GetStatAmountY(int iStat) const;
+        void RenderStatAmountBoxes();
         void RenderFrame();
         void RenderTexts();
         void RenderSubjectTexts();
