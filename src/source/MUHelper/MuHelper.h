@@ -35,6 +35,7 @@ namespace MUHelper
 		void AddTarget(int iTargetId, bool bIsAttacking);
 		void DeleteTarget(int iTargetId);
 		void DeleteAllTargets();
+		void SeedTargetsFromViewport();
 
 		void AddItem(int iItemId, POINT posDropped);
 		void DeleteItem(int iItemId);
@@ -58,7 +59,7 @@ namespace MUHelper
 		int SimulateSkill(ActionSkillType iSkill, bool bTargetRequired, int iTarget);
 		int SimulateBasicAttack(int iTarget);
 		int SimulateComboAttack();
-		int GetNearestTarget();
+		int GetNearestTarget(int iMaxDistance = -1);
 		int GetFarthestAttackingTarget();
 		void CleanupTargets();
 		int ComputeDistanceByRange(int iRange);

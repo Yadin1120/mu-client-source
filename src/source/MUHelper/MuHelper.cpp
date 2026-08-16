@@ -111,8 +111,13 @@ namespace MUHelper
         m_iCurrentItem = MAX_ITEMS;
         m_posOriginal = { Hero->PositionX, Hero->PositionY };
 
-        m_iHuntingDistance = ComputeDistanceByRange(m_config.iHuntingRange);
-        m_iObtainingDistance = ComputeDistanceByRange(m_config.iObtainingRange);
+        // הגדרות שמורות בשרת יכולות להגיע עם אפס (חשבון שנשמר לפני שהיו
+        // ברירות מחדל, או שמעולם לא כוון בחלון Z). טווח אפס = עוזר עיוור,
+        // ולכן אפס מיושר לברירת המחדל ולא נלקח כפשוטו.
+        m_iHuntingDistance = ComputeDistanceByRange(
+            m_config.iHuntingRange > 0 ? m_config.iHuntingRange : DEFAULT_HELPER_RANGE);
+        m_iObtainingDistance = ComputeDistanceByRange(
+            m_config.iObtainingRange > 0 ? m_config.iObtainingRange : DEFAULT_HELPER_RANGE);
 
         m_iSecondsElapsed = 0;
         m_iSecondsAway = 0;
@@ -123,7 +128,28 @@ namespace MUHelper
         m_iLoopCounter = 0;
 
         m_bActive = true;
+
+        SeedTargetsFromViewport();
+
         g_ConsoleDebug->Write(MCD_NORMAL, L"[MU Helper] Started");
+    }
+
+    // מפלצות שכבר עומדות במסך ברגע ההדלקה. המזינים הרגילים של AddTarget הם
+    // פקטות תנועה/לידה/תקיפה — מפלצת דוממת שנטענה לפני ההדלקה לא מגיעה מהם
+    // לעולם, ולכן העוזר "לא תקף בכלל" ליד מפלצות עומדות (16/08/2026).
+    // חייב לרוץ אחרי m_bActive = true, כי AddTarget דוחה קריאות כשהעוזר כבוי.
+    void CMuHelper::SeedTargetsFromViewport()
+    {
+        for (int i = 0; i < MAX_CHARACTERS_CLIENT; i++)
+        {
+            CHARACTER* pChar = &CharactersClient[i];
+            if (!pChar->Object.Live || pChar->Dead != 0 || !IsMonster(pChar))
+            {
+                continue;
+            }
+
+            AddTarget(pChar->Key, false);
+        }
     }
 
     void CMuHelper::Stop()
@@ -291,10 +317,14 @@ namespace MUHelper
         return static_cast<int>(std::ceil(std::sqrt(iDx * iDx + iDy * iDy)));
     }
 
-    int CMuHelper::GetNearestTarget()
+    // iMaxDistance מגביל את החיפוש (למשל לטווח הכישוף, לציד סטטי);
+    // ‏-1 = טווח הציד המלא, כמו תמיד.
+    int CMuHelper::GetNearestTarget(int iMaxDistance)
     {
         int iClosestMonsterId = -1;
-        int iMinDistance = m_iHuntingDistance;
+        int iMinDistance = (iMaxDistance >= 0)
+            ? std::min(iMaxDistance, m_iHuntingDistance)
+            : m_iHuntingDistance;
         std::set<int> setTargets;
         {
             _targetsLock.lock();
@@ -751,6 +781,16 @@ namespace MUHelper
         {
             const float fSkillDistance = gSkillManager.GetSkillDistance(m_iCurrentSkill, Hero);
             if (GameLogic::Combat::CanExecuteSkill(Hero, m_iCurrentSkill, fSkillDistance))
+            {
+                return SimulateAttack(m_iCurrentSkill);
+            }
+
+            // החלטת הבעלים (16/08/2026): הדמות נשארת סטטית — לא רודפים
+            // אחרי מפלצות. מטרה שמחוץ לטווח הכישוף מפנה מיד את מקומה
+            // לקרובה ביותר שכן בטווח, כך שהעוזר תמיד תוקף את מה שאפשר
+            // מהמקום, ועומד בשקט רק כשאין שום מטרה בהישג יד.
+            m_iCurrentTarget = GetNearestTarget(static_cast<int>(fSkillDistance));
+            if (m_iCurrentTarget != -1)
             {
                 return SimulateAttack(m_iCurrentSkill);
             }
@@ -1247,6 +1287,17 @@ namespace MUHelper
 
     bool CMuHelper::ShouldObtainItem(int iItemId)
     {
+        // אף תיבת איסוף לא סומנה מעולם = "לא כיוונתי", לא "אל תאסוף כלום".
+        // בלי זה, חשבון עם הגדרות שמורות ריקות מהשרת לא אוסף שום דבר —
+        // אחד משלושת התסמינים שנצפו ב-16/08/2026.
+        const bool bAnyPreference = m_config.bPickAllItems || m_config.bPickZen
+            || m_config.bPickJewel || m_config.bPickAncient || m_config.bPickExcellent
+            || m_config.bPickExtraItems;
+        if (!bAnyPreference)
+        {
+            return true;
+        }
+
         ITEM_t* pDrop = &Items[iItemId];
         ITEM* pItem = &pDrop->Item;
 
@@ -1297,7 +1348,10 @@ namespace MUHelper
     int CMuHelper::SelectItemToObtain()
     {
         int iClosestItemId = MAX_ITEMS;
-        int iMinDistance = m_config.iObtainingRange;
+        // m_iObtainingDistance (המרחק המחושב) ולא הערך הגולמי מההגדרות —
+        // ObtainItem() משווה מול המחושב, וערך גולמי כאן צמצם את רדיוס
+        // הבחירה בפועל (תיקון 4 מאבחון 16/08/2026).
+        int iMinDistance = m_iObtainingDistance;
 
         std::set<int> setItems;
         {

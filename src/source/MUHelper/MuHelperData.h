@@ -50,9 +50,14 @@ namespace MUHelper
 		PET_ATTACK_TOGETHER = 0x02
 	};
 
+	// ברירת המחדל לטווחי הציד והאיסוף (במשבצות). עד 16/08/2026 שניהם היו
+	// אפס — כלומר מי שלחץ Home בלי לכוון קודם בחלון Z קיבל עוזר שלא רואה
+	// שום מפלצת ושום פריט. 6 משבצות = סביבת מסך סבירה.
+	inline constexpr int DEFAULT_HELPER_RANGE = 6;
+
 	typedef struct _PetAttackConfig
 	{
-		int iHuntingRange = 0;
+		int iHuntingRange = DEFAULT_HELPER_RANGE;
 
 		bool bLongRangeCounterAttack = false;
 		bool bReturnToOriginalPosition = false;
@@ -85,7 +90,7 @@ namespace MUHelper
 
 		bool bRepairItem = false;
 
-		int iObtainingRange = 0;
+		int iObtainingRange = DEFAULT_HELPER_RANGE;
 		bool bPickAllItems = false;
 		bool bPickSelectItems = false;
 		bool bPickJewel = false;
