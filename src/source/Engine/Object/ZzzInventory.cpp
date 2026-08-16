@@ -7826,7 +7826,9 @@ bool IsHeroGameMaster()
         return false;
     }
 
-    return (Hero->CtlCode == CTLCODE_20OPERATOR) || (Hero->CtlCode == CTLCODE_08OPERATOR);
+    // ‏בדיקת ביט ולא שוויון: `CtlCode` הוא שדה דגלים, ובדיקת `==` נכשלת ברגע
+    // ‏שמצטרף אליו עוד ביט. הבדיקות הישנות בקובץ הזה משוות בשוויון — מלכודת.
+    return (Hero->CtlCode & (CTLCODE_20OPERATOR | CTLCODE_08OPERATOR)) != 0;
 }
 
 bool IsSellingBan(ITEM* pItem)

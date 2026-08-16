@@ -1176,6 +1176,12 @@ BOOL ReceiveJoinMapServer(std::span<const BYTE> ReceiveBuffer)
     c->PK = Data->PK;
     c->CtlCode = Data->CtlCode;
 
+    // ‏רמת ההרשאה של הדמות (‏32 = GM) מגיעה מהשרת **רק כאן**. כשהיא לא מגיעה,
+    // ‏כל מה שתלוי ב-GM בצד הקליינט נכשל בשקט ואין שום דרך לדעת למה — לכן
+    // ‏הערך נרשם ליומן בכל כניסה למפה.
+    g_ErrorReport.Write(L"> Join map: CtlCode=%d, packet=%u bytes\r\n",
+        (int)Data->CtlCode, (unsigned)ReceiveBuffer.size());
+
     o->Kind = KIND_PLAYER;
     SetCharacterClass(c);
 
