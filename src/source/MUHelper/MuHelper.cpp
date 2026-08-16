@@ -1004,25 +1004,13 @@ namespace MUHelper
                     return 0;
                 }
 
-                // Target is not yet in range, move closer.
+                // ציד סטטי (החלטת הבעלים, 16/08/2026): העוזר לא זז בשביל
+                // לתקוף. המקור הלך כאן שני צעדים לעבר המטרה בכל פעימה —
+                // וזה בדיוק ה"רודף אחרי מפלצות" שבוטל. המטרה נשארת ברשימה
+                // (אולי תתקרב מעצמה); משחררים את התור למטרה אחרת בטווח.
                 if (!bTargetNear)
                 {
-                    Hero->Path.Lock.lock();
-
-                    // Limit movement to 2 steps at a time
-                    int pathNum = std::min<int>(tempPath.PathNum, 2);
-                    for (int i = 0; i < pathNum; i++)
-                    {
-                        Hero->Path.PathX[i] = tempPath.PathX[i];
-                        Hero->Path.PathY[i] = tempPath.PathY[i];
-                    }
-                    Hero->Path.PathNum = pathNum;
-                    Hero->Path.CurrentPath = 0;
-                    Hero->Path.CurrentPathFloat = 0;
-
-                    Hero->Path.Lock.unlock();
-
-                    SendMove(Hero, &Hero->Object);
+                    m_iCurrentTarget = -1;
                     return 0;
                 }
             }
@@ -1104,22 +1092,11 @@ namespace MUHelper
             return 0;
         }
 
-        // Target is not yet in range, move closer.
+        // ציד סטטי (החלטת הבעלים, 16/08/2026): גם ההתקפה הבסיסית לא זזה —
+        // אותו ניטרול כמו ב-SimulateSkill. ראה ההסבר שם.
         if (!bTargetNear)
         {
-            Hero->Path.Lock.lock();
-            const int pathNum = std::min<int>(tempPath.PathNum, 2);
-            for (int i = 0; i < pathNum; i++)
-            {
-                Hero->Path.PathX[i] = tempPath.PathX[i];
-                Hero->Path.PathY[i] = tempPath.PathY[i];
-            }
-            Hero->Path.PathNum = pathNum;
-            Hero->Path.CurrentPath = 0;
-            Hero->Path.CurrentPathFloat = 0;
-            Hero->Path.Lock.unlock();
-
-            SendMove(Hero, &Hero->Object);
+            m_iCurrentTarget = -1;
             return 0;
         }
 
