@@ -6211,13 +6211,21 @@ void ReceiveGetItem(std::span<const BYTE> ReceiveBuffer)
                 RequestInventorySync();
             }
 
-            wchar_t szItem[64] = { 0, };
-            int level = pickedItem->Level;
-            GetItemName(pickedItem->Type, level, szItem);
+            // ההודעה "<פריט> התקבל" נכתבת רק כשהשחקן באמת הרים משהו מהרצפה.
+            // פריט שהשרת דוחף מיוזמתו (פרס אצל מוס, תגמול MU Pass, מתנת GM) מגיע
+            // באותה פקטה בדיוק, ואז הוא כבר נושא הודעה משלו מהשרת — שתי השורות יחד
+            // נראו לשחקן כאילו קיבל את הפריט פעמיים. SendGetItem מחזיק את מפתח
+            // הפריט שביקשנו להרים, ו--1 אומר "לא ביקשנו כלום".
+            if (SendGetItem != -1)
+            {
+                wchar_t szItem[64] = { 0, };
+                int level = pickedItem->Level;
+                GetItemName(pickedItem->Type, level, szItem);
 
-            wchar_t szMessage[128];
-            mu_swprintf(szMessage, L"%ls %ls", szItem, I18N::Game::Obtained);
-            g_pSystemLogBox->AddText(szMessage, SEASON3B::TYPE_SYSTEM_MESSAGE);
+                wchar_t szMessage[128];
+                mu_swprintf(szMessage, L"%ls %ls", szItem, I18N::Game::Obtained);
+                g_pSystemLogBox->AddText(szMessage, SEASON3B::TYPE_SYSTEM_MESSAGE);
+            }
 
             int Type = pickedItem->Type;
             if (Type == ITEM_JEWEL_OF_BLESS || Type == ITEM_JEWEL_OF_SOUL || Type == ITEM_JEWEL_OF_LIFE || Type == ITEM_JEWEL_OF_CHAOS || Type == ITEM_JEWEL_OF_CREATION
