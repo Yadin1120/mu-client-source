@@ -1,4 +1,5 @@
 ﻿#include "stdafx.h"
+#include "Scenes/LoginBackdrop.h"
 #include "UI/Legacy/UIControls.h"
 #include "Render/Models/ZzzBMD.h"
 #include "Engine/Object/ZzzInfomation.h"
@@ -5075,10 +5076,15 @@ void OpenLogoSceneData()
     ::LoadBitmap(L"Interface\\server_ex01.tga", BITMAP_LOG_IN + 12);
     ::LoadBitmap(L"Interface\\server_ex02.jpg", BITMAP_LOG_IN + 13, GL_NEAREST, GL_REPEAT);
     ::LoadBitmap(L"Interface\\cr_mu_lo.tga", BITMAP_LOG_IN + 14, GL_LINEAR);
+
+    Scenes::Login::Backdrop::Load();
 }
 
 void ReleaseLogoSceneData()
 {
+    // the backdrop textures live in the LOG_IN range and go with it
+    Scenes::Login::Backdrop::Release();
+
     for (int i = BITMAP_LOG_IN; i <= BITMAP_LOG_IN_END; ++i)
         ::DeleteBitmap(i);
     for (int i = BITMAP_TEMP; i < BITMAP_TEMP + 30; i++)

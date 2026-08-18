@@ -28,6 +28,7 @@
 #include "Engine/Object/ZzzOpenData.h"
 #include "UI/NewUI/NewUISystem.h"
 #include "UI/NewUI/Dialogs/NewUICommonMessageBox.h"
+#include "Scenes/LoginBackdrop.h"
 
 // External declarations
 extern int DeleteGuildIndex;
@@ -427,7 +428,11 @@ bool NewRenderLogInScene(HDC hDC)
     EndSprite();
     BeginBitmap();
 
-    if (CCameraMove::GetInstancePtr()->IsTourMode())
+    if (Scenes::Login::Backdrop::IsReady())
+    {
+        Scenes::Login::Backdrop::Render();
+    }
+    else if (CCameraMove::GetInstancePtr()->IsTourMode())
     {
         g_fMULogoAlpha += 0.02f;
         if (g_fMULogoAlpha > 10.0f) g_fMULogoAlpha = 10.0f;

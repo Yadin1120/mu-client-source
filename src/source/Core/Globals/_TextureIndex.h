@@ -689,6 +689,13 @@ enum
 
     BITMAP_INTERFACE_MACROUI_BEGIN,
     BITMAP_INTERFACE_MACROUI_END = BITMAP_INTERFACE_MACROUI_BEGIN + 4,
+    // The MU-AI login backdrop: the two tiles of the still, the light shaft, and
+    // the baked frames of the flowing wall glow. Its own range because the frames
+    // do not fit in the handful of slots still free inside BITMAP_LOG_IN.
+    BITMAP_LOGIN_BACKDROP_BEGIN,
+    BITMAP_LOGIN_BACKDROP,
+    BITMAP_LOGIN_BACKDROP_END = BITMAP_LOGIN_BACKDROP_BEGIN + 16,
+
     BITMAP_EFFECT_TEXTURE_END = 33000,
     BITMAP_NONAMED_TEXTURES_BEGIN = 33001,
     BITMAP_NONAMED_TEXTURES_END = 0x7FFFFFFF,
