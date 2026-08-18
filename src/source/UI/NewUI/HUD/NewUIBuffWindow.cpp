@@ -1,4 +1,4 @@
-// NewUIBuffWindow.cpp: implementation of the CNewUIBuffWindow class.
+﻿// NewUIBuffWindow.cpp: implementation of the CNewUIBuffWindow class.
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
@@ -121,6 +121,10 @@ bool SEASON3B::CNewUIBuffWindow::SetDisableRenderBuff(const eBuffState& _BuffSta
 #ifdef PBG_ADD_PKSYSTEM_INGAMESHOP
     case eDeBuff_MoveCommandWin:
 #endif //PBG_ADD_PKSYSTEM_INGAMESHOP
+    // ‏הבאף של ה-GM נדלק לכל בעל הרשאה, והתא שלו באטלס `newui_statusicon`
+    // ‏הוא מציין מקום שמצייר את המספר 28 (=‎eBuff_GMEffect). שחקן רגיל לא
+    // ‏רואה אותו כי אין לו את הבאף; אצל GM זה ריבוע "28" קבוע על המסך.
+    case eBuff_GMEffect:
     case eDeBuff_FlameStrikeDamage:
     case eDeBuff_GiganticStormDamage:
     case eDeBuff_LightningShockDamage:
