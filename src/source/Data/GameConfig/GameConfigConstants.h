@@ -43,9 +43,17 @@ namespace CfgKeys
 
 namespace CfgDefaults
 {
-    inline constexpr int  CfgDefaultWindowWidth  = 1024;
-    inline constexpr int  CfgDefaultWindowHeight = 768;
-    inline constexpr bool CfgDefaultWindowed     = true;
+    // 0 = auto: fill the monitor at its native resolution. The desktop size is
+    // unknown this early, so Winmain resolves it once SDL video is up, and the
+    // config keeps 0 until the player picks a resolution in the options window
+    // -- a fresh install therefore follows whatever monitor it lands on.
+    inline constexpr int  CfgDefaultWindowWidth  = 0;
+    inline constexpr int  CfgDefaultWindowHeight = 0;
+    inline constexpr bool CfgDefaultWindowed     = false;
+
+    // Used only if SDL cannot report a desktop mode.
+    inline constexpr int  CfgFallbackWindowWidth  = 1024;
+    inline constexpr int  CfgFallbackWindowHeight = 768;
 
     inline constexpr int  CfgDefaultSoundVolume = 5;
     inline constexpr int  CfgDefaultMusicVolume = 5;

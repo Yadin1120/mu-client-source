@@ -13,6 +13,7 @@
 #include <clocale>
 #include "Core/Utilities/Log/CrashReport.h"
 #include "Data/GameConfig/GameConfig.h"
+#include "Data/GameConfig/GameConfigConstants.h"
 #include "GameLogic/AntiCheat/SelfCheck.h"
 #include "UI/Legacy/UIWindows.h"
 #include "UI/Legacy/UIManager.h"
@@ -1627,18 +1628,11 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int nC
         GameConfig::GetInstance().DecryptCredentials(m_Username, m_Password, _countof(m_Username), _countof(m_Password));
     }
 
-    g_fScreenRate_x = (float)WindowWidth / (float)REFERENCE_WIDTH;
-    g_fScreenRate_y = (float)WindowHeight / (float)REFERENCE_HEIGHT;
-
 
     pMultiLanguage = new CMultiLanguage(g_strSelectedML);
 
     if (g_iChatInputType == 1)
         ShowCursor(FALSE);
-
-    // Fullscreen is requested via an SDL window flag below; SDL handles the
-    // display-mode change and restores it on teardown.
-    g_ErrorReport.Write(L"> Screen size = %d x %d.\r\n", WindowWidth, WindowHeight);
 
     g_hInst = hInstance;
 
@@ -1649,6 +1643,22 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int nC
         MessageBox(nullptr, L"Windows aplication error!", L"Aplication Error", MB_ICONERROR);
         return 0;
     }
+
+    // Width/Height 0 in config.ini means "auto" (CfgDefaults) - the fresh-install
+    // default, so a first run fills the monitor at its native resolution instead of
+    // switching it down to a fixed size. Only answerable now that SDL video is up.
+    // Nothing is written back: the config stays on auto until the player picks a
+    // resolution in the options window.
+    if (WindowWidth == 0 || WindowHeight == 0)
+    {
+        const SDL_DisplayMode* desktop = SDL_GetDesktopDisplayMode(SDL_GetPrimaryDisplay());
+        WindowWidth  = (desktop && desktop->w > 0) ? desktop->w : CfgDefaults::CfgFallbackWindowWidth;
+        WindowHeight = (desktop && desktop->h > 0) ? desktop->h : CfgDefaults::CfgFallbackWindowHeight;
+    }
+
+    // Fullscreen is requested via an SDL window flag below; SDL handles the
+    // display-mode change and restores it on teardown.
+    g_ErrorReport.Write(L"> Screen size = %d x %d.\r\n", WindowWidth, WindowHeight);
 
     // The fixed-function renderer needs a compatibility-profile GL context.
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
@@ -1668,6 +1678,23 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int nC
     }
 
     g_ErrorReport.Write(L"> Start window success.\r\n");
+
+    // Take the size SDL actually handed us rather than the one we asked for: a
+    // fullscreen window with no explicit display mode is sized to the desktop,
+    // which need not match the request, and no resize event is guaranteed for
+    // the initial state.
+    {
+        int createdWidth = 0, createdHeight = 0;
+        if (SDL_GetWindowSizeInPixels(g_sdlWindow, &createdWidth, &createdHeight)
+            && createdWidth > 0 && createdHeight > 0)
+        {
+            WindowWidth = createdWidth;
+            WindowHeight = createdHeight;
+        }
+    }
+
+    g_fScreenRate_x = (float)WindowWidth / (float)REFERENCE_WIDTH;
+    g_fScreenRate_y = (float)WindowHeight / (float)REFERENCE_HEIGHT;
 
     // Initialize OpenGL viewport dimensions to match window dimensions
     // This ensures they're correct even if WM_SIZE hasn't fired yet or sent wrong values
