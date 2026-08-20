@@ -122,7 +122,19 @@ MASTER_LEVEL_VALUE	Master_Level_Data;
 // ישן מקבל את רשימת הדמויות בכותרת C1 (עד 5 דמויות), חדש מקבל C2 (בלי התקרה).
 // הזהות נרשמת בשרת ב-RegisterSeason107ClientUpdatePlugIn; בלעדיה הקליינט ייפול
 // לברירת המחדל של השרת. ראה גם ReceiveCharacterListExtended, שמבין את שתי הצורות.
-BYTE Version[SIZE_PROTOCOLVERSION] = { '2', '0', '4', '0', '5' };
+// 20/08/2026 — הועלתה ל-20406 עבור **שער הגרסה**. השרת משווה את מספר העונה
+// שנגזר מכאן מול מינימום, ודוחה בנייה ישנה עם LoginResult.WrongVersion. המספר עולה
+// **ידנית ורק כשעדכון הוכרז חובה**, לא בכל פרסום. כל ערך חדש חייב שורת
+// GameClientDefinition מתאימה בשרת, אחרת הקליינט נופל לברירת המחדל הישנה
+// וייחסם בעצמו — ראה RegisterClientBuildGateIdentitiesUpdatePlugIn (עדכון 134).
+#ifdef __APPLE__
+// למק זהות משלו (עונה 118), כי הוא **חייב** להישפט בנפרד: אין לו לאנצ'ר, אין
+// לו עדכון עצמי, ודחייה שלו היא נעילה בלי מוצא. עד היום הוא הכריז על אותם
+// בייטים כמו החלונות, ובגלל זה מונה כשלי טוקן הלאנצ'ר לא היה ניתן לפענוח.
+BYTE Version[SIZE_PROTOCOLVERSION] = { '2', '0', '4', '1', '6' };
+#else
+BYTE Version[SIZE_PROTOCOLVERSION] = { '2', '0', '4', '0', '6' };
+#endif
 BYTE Serial[SIZE_PROTOCOLSERIAL + 1] = { "k1Pk2jcET48mxL3b" };
 
 void ApplyLaunchTokenToSerial()

@@ -55,6 +55,7 @@ namespace MUHelper
 		int RepairEquipments();
 		int Regroup();
 		int ReturnToAnchor();
+		int AttackInPlace();
 		bool IsWithinLeash(POINT pos);
 		bool IsWithinHuntingArea(POINT pos);
 		int StepTowardTarget(const struct _PATH_t& tempPath);

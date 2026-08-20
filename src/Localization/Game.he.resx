@@ -2400,6 +2400,7 @@
   <data name="Auto Heal" xml:space="preserve"><value>ריפוי אוטומטי</value></data>
   <data name="Drain Life" xml:space="preserve"><value>שאיבת חיים</value></data>
   <data name="Repair Item" xml:space="preserve"><value>תקן פריט</value></data>
+  <data name="Do Not Move" xml:space="preserve"><value>לא לזוז — רק לתקוף</value></data>
   <data name="Pick All Near Items" xml:space="preserve"><value>אסוף את כל הפריטים הקרובים</value></data>
   <data name="Pick Selected Items" xml:space="preserve"><value>אסוף פריטים נבחרים</value></data>
   <data name="Jewel/Gem" xml:space="preserve"><value>אבן חן</value></data>

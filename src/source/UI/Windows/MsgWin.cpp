@@ -443,6 +443,148 @@ void CMsgWin::PopUp(int nMsgCode, wchar_t* pszMsg)
     rUIMng.ShowWin(this);
 }
 
+
+#ifdef _WIN32
+#include <shellapi.h>
+
+namespace
+{
+    // שם הלאנצ'ר כפי שהוא מופץ לשחקנים.
+    const wchar_t* const LAUNCHER_FILE_NAME = L"MU-AI-Launcher.exe";
+
+    // הדגל שאומר ללאנצ'ר "השרת דחה אותי כבנייה ישנה": הוא מאמת שוב את
+    // כל הקבצים במלואם ומסרב להסתפק ברשימת קבצים מטמונה.
+    const wchar_t* const FORCED_UPDATE_ARGUMENT = L"--forced-update";
+
+    bool FileExists(const std::wstring& strPath)
+    {
+        const DWORD dwAttributes = ::GetFileAttributesW(strPath.c_str());
+        return dwAttributes != INVALID_FILE_ATTRIBUTES && !(dwAttributes & FILE_ATTRIBUTE_DIRECTORY);
+    }
+
+    std::wstring DirectoryOf(const std::wstring& strPath)
+    {
+        const auto nSlash = strPath.find_last_of(L"\\/");
+        return nSlash == std::wstring::npos ? std::wstring() : strPath.substr(0, nSlash);
+    }
+
+    // הלאנצ'ר רושם את מיקומו בכל פתיחה. זה המקור המדויק כשההתקנה לא סטנדרטית.
+    std::wstring ReadRecordedLauncherPath()
+    {
+        // ‏GetEnvironmentVariableW ולא _wgetenv: לשנייה יש גרסה "בטוחה" ב-CRT, והשימוש בה
+        // מייצר C4996 בחלק מהתצורות. כאן ממילא כל הקוד הזה הוא וינדוס בלבד.
+        wchar_t szLocalAppData[MAX_PATH] = { 0 };
+        const DWORD dwLength = ::GetEnvironmentVariableW(L"LOCALAPPDATA", szLocalAppData, MAX_PATH);
+        if (dwLength == 0 || dwLength >= MAX_PATH)
+        {
+            return std::wstring();
+        }
+
+        const std::wstring strMarker = std::wstring(szLocalAppData) + L"\\MuLauncher\\launcher-path.txt";
+        FILE* pFile = nullptr;
+        if (::_wfopen_s(&pFile, strMarker.c_str(), L"rb") != 0 || pFile == nullptr)
+        {
+            return std::wstring();
+        }
+
+        char szBuffer[1024] = { 0 };
+        const size_t nRead = ::fread(szBuffer, 1, sizeof(szBuffer) - 1, pFile);
+        ::fclose(pFile);
+        if (nRead == 0)
+        {
+            return std::wstring();
+        }
+
+        // הקובץ נכתב UTF-8 בלי BOM, שורה אחת.
+        int nLength = static_cast<int>(nRead);
+        while (nLength > 0 && (szBuffer[nLength - 1] == '\r' || szBuffer[nLength - 1] == '\n'))
+        {
+            nLength--;
+        }
+
+        if (nLength <= 0)
+        {
+            return std::wstring();
+        }
+
+        wchar_t szWide[1024] = { 0 };
+        const int nWide = ::MultiByteToWideChar(CP_UTF8, 0, szBuffer, nLength, szWide, 1023);
+        if (nWide <= 0)
+        {
+            return std::wstring();
+        }
+
+        szWide[nWide] = L'\0';
+        return std::wstring(szWide);
+    }
+
+    std::wstring FindLauncher()
+    {
+        wchar_t szModule[MAX_PATH] = { 0 };
+        if (::GetModuleFileNameW(nullptr, szModule, MAX_PATH) != 0)
+        {
+            const std::wstring strGameDirectory = DirectoryOf(szModule);
+            if (!strGameDirectory.empty())
+            {
+                // בהתקנה הרגילה הלאנצ'ר יושב בדיוק ליד Main.exe.
+                const std::wstring strBeside = strGameDirectory + L"\\" + LAUNCHER_FILE_NAME;
+                if (FileExists(strBeside))
+                {
+                    return strBeside;
+                }
+
+                const std::wstring strParent = DirectoryOf(strGameDirectory);
+                if (!strParent.empty())
+                {
+                    const std::wstring strAbove = strParent + L"\\" + LAUNCHER_FILE_NAME;
+                    if (FileExists(strAbove))
+                    {
+                        return strAbove;
+                    }
+                }
+            }
+        }
+
+        const std::wstring strRecorded = ReadRecordedLauncherPath();
+        if (!strRecorded.empty() && FileExists(strRecorded))
+        {
+            return strRecorded;
+        }
+
+        return std::wstring();
+    }
+}
+#endif
+
+// פותח את הלאנצ'ר אחרי שהשרת דחה את המשחק כבנייה ישנה.
+//
+// למה בכלל: אתחול שרת מנתק שחקנים אבל לא מעדכן אותם — הניתוק מחזיר אותם למסך
+// ההתחברות של אותו תהליך, עם הבינארי הישן שכבר בזיכרון. רק הלאנצ'ר מוריד קובץ חדש.
+// המשחק סוגר את עצמו בכל מקרה (ההתנהגות הוותיקה של RECEIVE_LOG_IN_FAIL_VERSION); כל מה
+// שמתווסף כאן הוא שהלאנצ'ר יעלה לבד, כדי שהשחקן לא יצטרך לדעת מה לעשות.
+//
+// אם לא נמצא לאנצ'ר — לא קורה כלום מעבר להודעה הרגילה, שכבר אומרת "אנא הורד
+// את הגרסה החדשה". אף פעם לא מנסים פעמיים ואף פעם לא מעכבים את הסגירה.
+void OpenLauncherForForcedUpdate()
+{
+#ifdef _WIN32
+    const std::wstring strLauncher = FindLauncher();
+    if (strLauncher.empty())
+    {
+        return;
+    }
+
+    const std::wstring strWorkingDirectory = DirectoryOf(strLauncher);
+    ::ShellExecuteW(
+        nullptr,
+        L"open",
+        strLauncher.c_str(),
+        FORCED_UPDATE_ARGUMENT,
+        strWorkingDirectory.empty() ? nullptr : strWorkingDirectory.c_str(),
+        SW_SHOWNORMAL);
+#endif
+}
+
 void CMsgWin::ManageOKClick()
 {
     CUIMng& rUIMng = CUIMng::Instance();
@@ -451,6 +593,11 @@ void CMsgWin::ManageOKClick()
     switch (m_nMsgCode)
     {
     case RECEIVE_LOG_IN_FAIL_VERSION:
+        // השרת דחה את הבנייה הזאת. פותחים את הלאנצ'ר לפני הסגירה, כדי שהעדכון
+        // יקרה לבד והשחקן לא יישאר עם הודעה ובלי מושג מה לעשות.
+        OpenLauncherForForcedUpdate();
+        ::PostMessage(g_hWnd, WM_CLOSE, 0, 0);
+        break;
     case MESSAGE_SERVER_LOST:
         ::PostMessage(g_hWnd, WM_CLOSE, 0, 0);
         break;

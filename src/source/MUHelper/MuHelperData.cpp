@@ -144,6 +144,7 @@ namespace MUHelper
 		netData.bAutoAcceptFriend = gameData.bAutoAcceptFriend ? 1 : 0;
 		netData.bAutoAcceptGuild = gameData.bAutoAcceptGuild ? 1 : 0;
 		netData.bFallbackBasicAttack = gameData.bFallbackBasicAttack ? 1 : 0;
+		netData.bStayInPlace = gameData.bStayInPlace ? 1 : 0;
 	}
 
 	void ConfigDataSerDe::Deserialize(const PRECEIVE_MUHELPER_DATA& netData, ConfigData& gameData)
@@ -235,6 +236,7 @@ namespace MUHelper
 		gameData.bAutoAcceptFriend = (bool)netData.bAutoAcceptFriend;
 		gameData.bAutoAcceptGuild = (bool)netData.bAutoAcceptGuild;
 		gameData.bFallbackBasicAttack = (bool)netData.bFallbackBasicAttack;
+		gameData.bStayInPlace = (bool)netData.bStayInPlace;
 	}
 
 }

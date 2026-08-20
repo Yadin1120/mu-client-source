@@ -379,6 +379,23 @@ namespace MUHelper
     // למטרה קרובה יותר במקום להיגרר אחרי זו.
     int CMuHelper::StepTowardTarget(const PATH_t& tempPath)
     {
+        // "רק לתקוף": לא ניגשים לשום מטרה. מחזירים 0 כדי שהקורא ישחרר את
+        // התור למטרה קרובה יותר שכבר בטווח — אחרת הדמות הייתה נועלת את
+        // עצמה על מפלצת רחוקה ועומדת בלי לתקוף כלום.
+        if (m_config.bStayInPlace)
+        {
+            return 0;
+        }
+
+        // 🔴 אין להוציא פקודת תנועה חדשה כשהקודמת עוד רצה. אחרי שהפעימה
+        // ירדה ל-100ms זה קרה עשר פעמים בשנייה, וכל פקודה אתחלה מסלול של
+        // שני צעדים מחדש לפני שהקודם הסתיים — הדמות מגמגמת במקום ללכת.
+        // מחזירים 1 ולא 0: אנחנו בדרך, לא נכשלנו, ואסור לשחרר את המטרה.
+        if (Hero->Movement)
+        {
+            return 1;
+        }
+
         const int iPathNum = std::min<int>(tempPath.PathNum, MAX_STEPS_PER_TICK);
 
         int iSteps = 0;
@@ -883,6 +900,15 @@ namespace MUHelper
             if (m_iCurrentTarget == -1)
             {
                 m_iComboState = 0;
+
+                // "רק לתקוף": ממשיכים לנפנף גם בלי מטרה, בדיוק כמו שחקן
+                // שמחזיק את ההתקפה על קרקע ריקה. לכישופי אזור זה לא סתם
+                // אנימציה — מה שנכנס לטווח חוטף בלי שנצטרך לבחור בו קודם.
+                if (m_config.bStayInPlace)
+                {
+                    return AttackInPlace();
+                }
+
                 ReturnToAnchor();
                 return 0;
             }
@@ -1247,8 +1273,31 @@ namespace MUHelper
     // אין מה לתקוף: אם התרחקנו מהעוגן תוך כדי הציד, חוזרים אליו במקום
     // להישאר תקועים בקצה הרצועה. כך מרכז אזור הציד נשאר איפה שהשחקן
     // בחר להעמיד את הדמות, גם אחרי גל מפלצות שמשך אותה הצידה.
+    // תקיפה במקום, בלי מטרה כלל. ‏SimulateSkill עם bTargetRequired=false
+    // מכוון את הכישוף למיקום של הדמות עצמה — אותו מסלול שבו משתמשים
+    // הבאפים וכישופי הנובה, ולכן הוא בדוק ואינו דורש מטרה נבחרת.
+    // ההתקפה הבסיסית לא נכללת: היא מחייבת אינדקס מטרה ואי-אפשר לשחרר
+    // אותה באוויר.
+    int CMuHelper::AttackInPlace()
+    {
+        const ActionSkillType iSkill = SelectAttackSkill();
+        if (iSkill <= AT_SKILL_UNDEFINED)
+        {
+            return 0;
+        }
+
+        m_iCurrentSkill = iSkill;
+        return SimulateSkill(iSkill, false, -1);
+    }
+
     int CMuHelper::ReturnToAnchor()
     {
+        // "רק לתקוף": אם לא זזנו, אין לאן לחזור.
+        if (m_config.bStayInPlace)
+        {
+            return 1;
+        }
+
         const POINT posHero = { Hero->PositionX, Hero->PositionY };
         if (ComputeDistanceBetween(posHero, m_posOriginal) <= ANCHOR_TOLERANCE)
         {
@@ -1375,6 +1424,14 @@ namespace MUHelper
         {
             if (!CheckTile(Hero, &Hero->Object, 2.0f))
             {
+                // "רק לתקוף": לא הולכים גם אל שלל. פריט שנפל מחוץ להישג יד
+                // משוחרר כדי שלא יחסום את התור לפריט שכן צמוד לדמות.
+                if (m_config.bStayInPlace)
+                {
+                    DeleteItem(m_iCurrentItem);
+                    return 1;
+                }
+
                 if (PathFinding2((Hero->PositionX), (Hero->PositionY), TargetX, TargetY, &Hero->Path))
                 {
                     SendMove(Hero, &Hero->Object);

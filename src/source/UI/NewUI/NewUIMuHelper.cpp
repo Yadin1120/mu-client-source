@@ -45,7 +45,8 @@ enum ECheckBoxId: uint16_t
     CHECKBOX_ID_DR_ATTACK_CEASE,
     CHECKBOX_ID_DR_ATTACK_AUTO,
     CHECKBOX_ID_DR_ATTACK_TOGETHER,
-    CHECKBOX_ID_FALLBACK_BASIC_ATTACK
+    CHECKBOX_ID_FALLBACK_BASIC_ATTACK,
+    CHECKBOX_ID_STAY_IN_PLACE
 };
 
 enum EButtonId : uint16_t
@@ -268,6 +269,9 @@ void CNewUIMuHelper::InitCheckBox()
     //--
     InsertCheckBox(IMAGE_CHECKBOX_BTN, m_Pos.x + 18, m_Pos.y + 80, 15, 15, 0, &I18N::Game::AutoAcceptFriend, CHECKBOX_ID_AUTO_ACCEPT_FRIEND, 2);
     InsertCheckBox(IMAGE_CHECKBOX_BTN, m_Pos.x + 18, m_Pos.y + 125, 15, 15, 0, &I18N::Game::PVPCounterattack, CHECKBOX_ID_AUTO_DEFEND, 2);
+    // בלשונית הצייד אין שורה פנויה — כל מיקום שם התנגש במסגרת קבוצת
+    // המיומנויות. כאן יש מקום, וזו ממילא הגדרת התנהגות ולא הגדרת ציד.
+    InsertCheckBox(IMAGE_CHECKBOX_BTN, m_Pos.x + 18, m_Pos.y + 152, 15, 15, 0, &I18N::Game::DoNotMove, CHECKBOX_ID_STAY_IN_PLACE, 2);
     InsertCheckBox(IMAGE_CHECKBOX_BTN, m_Pos.x + 18, m_Pos.y + 97, 15, 15, 0, &I18N::Game::AutoAcceptGuildMember, CHECKBOX_ID_AUTO_ACCEPT_GUILD, 2);
 
     RegisterBoxCharacter(0xFF, CHECKBOX_ID_POTION);
@@ -288,6 +292,7 @@ void CNewUIMuHelper::InitCheckBox()
     RegisterBoxCharacter(0xFF, CHECKBOX_ID_AUTO_DEFEND);
     RegisterBoxCharacter(0xFF, CHECKBOX_ID_AUTO_ACCEPT_GUILD);
     RegisterBoxCharacter(0xFF, CHECKBOX_ID_FALLBACK_BASIC_ATTACK);
+    RegisterBoxCharacter(0xFF, CHECKBOX_ID_STAY_IN_PLACE);
 
     RegisterBoxCharacter(Dark_Knight, CHECKBOX_ID_SKILL3_DELAY);
     RegisterBoxCharacter(Dark_Knight, CHECKBOX_ID_SKILL3_CONDITION);
@@ -898,6 +903,10 @@ void CNewUIMuHelper::ApplyConfigFromCheckbox(int iCheckboxId, bool bState)
         _TempConfig.bFallbackBasicAttack = bState;
         break;
 
+    case CHECKBOX_ID_STAY_IN_PLACE:
+        _TempConfig.bStayInPlace = bState;
+        break;
+
     default:
         break;
     }
@@ -1105,6 +1114,7 @@ void CNewUIMuHelper::ApplyConfig()
     m_CheckBoxList[CHECKBOX_ID_AUTO_ACCEPT_GUILD].box->RegisterBoxState(_TempConfig.bAutoAcceptGuild);
     m_CheckBoxList[CHECKBOX_ID_AUTO_DEFEND].box->RegisterBoxState(_TempConfig.bUseSelfDefense);
     m_CheckBoxList[CHECKBOX_ID_FALLBACK_BASIC_ATTACK].box->RegisterBoxState(_TempConfig.bFallbackBasicAttack);
+    m_CheckBoxList[CHECKBOX_ID_STAY_IN_PLACE].box->RegisterBoxState(_TempConfig.bStayInPlace);
 
     m_ItemFilter.Clear();
     for (const auto& item : _TempConfig.aExtraItems)

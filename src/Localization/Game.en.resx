@@ -11937,6 +11937,9 @@
     <value>Repair Item</value>
     <comment>legacy_id=3518</comment>
   </data>
+  <data name="Do Not Move" xml:space="preserve">
+    <value>Do Not Move</value>
+  </data>
   <data name="Pick All Near Items" xml:space="preserve">
     <value>Pick All Near Items</value>
     <comment>legacy_id=3519</comment>

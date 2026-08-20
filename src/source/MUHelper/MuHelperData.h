@@ -110,6 +110,10 @@ namespace MUHelper
 		bool bAutoAcceptFriend = false;
 		bool bAutoAcceptGuild = false;
 		bool bFallbackBasicAttack = true;
+
+		// "רק לתקוף": הדמות לא זזה בשביל כלום — לא אל מפלצת, לא אל שלל,
+		// ולא בחזרה לעוגן. תוקפת את מה שמגיע אליה ונשארת בדיוק במקומה.
+		bool bStayInPlace = false;
 	} ConfigData;
 
 	class ConfigDataSerDe {
