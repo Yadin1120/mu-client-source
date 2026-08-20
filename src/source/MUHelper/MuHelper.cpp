@@ -23,6 +23,17 @@
 constexpr int MAX_ACTIONABLE_DISTANCE = 10;
 constexpr int DEFAULT_DURABILITY_THRESHOLD = 50;
 
+// כמה צעדים מותר לצעוד בפעימה אחת כשניגשים למטרה. הקצב של המנוע המקורי.
+constexpr int MAX_STEPS_PER_TICK = 2;
+
+// כל כמה פעימות (250ms) נסרק המסך מחדש אחרי מפלצות דוממות. פקטות הלידה
+// והתנועה מכסות את הרוב, אבל מפלצת שנטענה בלי פקטה — אחרי ורפ, אחרי
+// התחברות מחדש, או כשהעוזר נדלק מרחוק — לא מגיעה מהן לעולם.
+constexpr int RESEED_INTERVAL_TICKS = 8;
+
+// מרחק שנחשב "בעוגן". משבצת אחת, כמו במונה ההתרחקות של WorkLoop.
+constexpr int ANCHOR_TOLERANCE = 1;
+
 SpinLock _targetsLock;
 SpinLock _itemsLock;
 
@@ -119,6 +130,11 @@ namespace MUHelper
         m_iObtainingDistance = ComputeDistanceByRange(
             m_config.iObtainingRange > 0 ? m_config.iObtainingRange : DEFAULT_HELPER_RANGE);
 
+        // רצועת העיגון = טווח הציד שהשחקן כבר בחר. אין הגדרה חדשה, אין
+        // שינוי בפרוטוקול: "טווח ציד 6" פירושו גם "עד כמה מותר להתרחק".
+        m_iLeashDistance = m_iHuntingDistance;
+        m_iReseedCounter = 0;
+
         m_iSecondsElapsed = 0;
         m_iSecondsAway = 0;
 
@@ -170,6 +186,15 @@ namespace MUHelper
             g_ConsoleDebug->Write(MCD_NORMAL, L"[MU Helper] Entered safezone. Stopping.");
             TriggerStop();
             return;
+        }
+
+        // סריקה חוזרת של המסך: ב-16/08 היא נוספה רק להדלקה, ולכן מפלצת
+        // דוממת שהופיעה אחר כך בלי פקטת לידה נשארה בלתי־נראית לעוזר עד
+        // שזזה מעצמה. בסריקה מחזורית אין חלון עיוור כזה.
+        if (++m_iReseedCounter >= RESEED_INTERVAL_TICKS)
+        {
+            m_iReseedCounter = 0;
+            SeedTargetsFromViewport();
         }
 
         Work();
@@ -317,7 +342,61 @@ namespace MUHelper
         return static_cast<int>(std::ceil(std::sqrt(iDx * iDx + iDy * iDy)));
     }
 
-    // iMaxDistance מגביל את החיפוש (למשל לטווח הכישוף, לציד סטטי);
+    // ציד מעוגן (20/08/2026). הנקודה שבה נדלק העוזר היא עוגן, והדמות רשאית
+    // לצעוד לעבר מטרות רק בתוך רצועה סביבו. עד 16/08 המנוע המקורי הלך שני
+    // צעדים אל המטרה בלי שום גבול — זה ה"רודף אחרי מפלצות" שבוטל; הניטרול
+    // שבא במקומו השאיר את הדמות עומדת גם כשמפלצת שני צעדים ממנה. הרצועה
+    // נותנת את שניהם: ניגשת למה שקרוב, לא נודדת מהמקום.
+    bool CMuHelper::IsWithinLeash(POINT pos)
+    {
+        return ComputeDistanceBetween(pos, m_posOriginal) <= m_iLeashDistance;
+    }
+
+    // האזור שהעוזר בכלל מתעניין בו: כל מה שאפשר לתקוף מאיזושהי נקודה בתוך
+    // הרצועה. רחב מהרצועה עצמה בדיוק בטווח הציד.
+    bool CMuHelper::IsWithinHuntingArea(POINT pos)
+    {
+        return ComputeDistanceBetween(pos, m_posOriginal)
+            <= (m_iLeashDistance + m_iHuntingDistance);
+    }
+
+    // צועד לעבר המטרה לאורך מסלול שכבר חושב, ורק כל עוד הצעדים נשארים
+    // בתוך הרצועה. ‏0 = לא זזנו כי הצעד הבא חורג — הקורא משחרר את התור
+    // למטרה קרובה יותר במקום להיגרר אחרי זו.
+    int CMuHelper::StepTowardTarget(const PATH_t& tempPath)
+    {
+        const int iPathNum = std::min<int>(tempPath.PathNum, MAX_STEPS_PER_TICK);
+
+        int iSteps = 0;
+        while (iSteps < iPathNum
+            && IsWithinLeash({ tempPath.PathX[iSteps], tempPath.PathY[iSteps] }))
+        {
+            iSteps++;
+        }
+
+        if (iSteps == 0)
+        {
+            return 0;
+        }
+
+        Hero->Path.Lock.lock();
+
+        for (int i = 0; i < iSteps; i++)
+        {
+            Hero->Path.PathX[i] = tempPath.PathX[i];
+            Hero->Path.PathY[i] = tempPath.PathY[i];
+        }
+        Hero->Path.PathNum = iSteps;
+        Hero->Path.CurrentPath = 0;
+        Hero->Path.CurrentPathFloat = 0;
+
+        Hero->Path.Lock.unlock();
+
+        SendMove(Hero, &Hero->Object);
+        return 1;
+    }
+
+    // iMaxDistance מגביל את החיפוש (למשל לטווח הכישוף);
     // ‏-1 = טווח הציד המלא, כמו תמיד.
     int CMuHelper::GetNearestTarget(int iMaxDistance)
     {
@@ -335,6 +414,11 @@ namespace MUHelper
         for (const int& iMonsterId : setTargets)
         {
             int iIndex = FindCharacterIndex(iMonsterId);
+            if (iIndex == MAX_CHARACTERS_CLIENT)
+            {
+                continue;
+            }
+
             CHARACTER* pTarget = &CharactersClient[iIndex];
 
             if (!IsMonster(pTarget))
@@ -368,6 +452,11 @@ namespace MUHelper
         for (const int& iMonsterId : setTargets)
         {
             int iIndex = FindCharacterIndex(iMonsterId);
+            if (iIndex == MAX_CHARACTERS_CLIENT)
+            {
+                continue;
+            }
+
             CHARACTER* pTarget = &CharactersClient[iIndex];
 
             if (!IsMonster(pTarget))
@@ -389,9 +478,11 @@ namespace MUHelper
     void CMuHelper::CleanupTargets()
     {
         std::set<int> setTargets;
+        std::set<int> setAttacking;
         {
             _targetsLock.lock();
             setTargets = m_setTargets;
+            setAttacking = m_setTargetsAttacking;
             _targetsLock.unlock();
         }
 
@@ -406,6 +497,16 @@ namespace MUHelper
 
             CHARACTER* pTarget = &CharactersClient[iIndex];
             if (pTarget->Dead > 0 || !pTarget->Object.Live)
+            {
+                DeleteTarget(iMonsterId);
+                continue;
+            }
+
+            // מפלצת שנדדה אל מחוץ לאזור הציד כבר לא ברת־השגה. בלי הניקוי
+            // הזה הרשימה נשארת מלאה במטרות רחוקות, והעוזר "עסוק" לכאורה
+            // בזמן שאין לו מה לתקוף. מי שתוקף אותנו נשאר ברשימה בכל מקרה.
+            if (!IsWithinHuntingArea({ pTarget->PositionX, pTarget->PositionY })
+                && setAttacking.find(iMonsterId) == setAttacking.end())
             {
                 DeleteTarget(iMonsterId);
             }
@@ -750,23 +851,25 @@ namespace MUHelper
     {
         if (m_iCurrentTarget == -1)
         {
-            if (!m_setTargets.empty())
-            {
-                CleanupTargets();
+            CleanupTargets();
 
-                if (m_config.bLongRangeCounterAttack)
-                {
-                    m_iCurrentTarget = GetFarthestAttackingTarget();
-                }
-                
-                if (m_iCurrentTarget == -1)
-                {
-                    m_iCurrentTarget = GetNearestTarget();
-                }
+            if (m_config.bLongRangeCounterAttack)
+            {
+                m_iCurrentTarget = GetFarthestAttackingTarget();
             }
-            else
+
+            if (m_iCurrentTarget == -1)
+            {
+                m_iCurrentTarget = GetNearestTarget();
+            }
+
+            // אין מטרה בהישג. לא רק "הרשימה ריקה" — גם רשימה שכולה מפלצות
+            // שהתרחקו נראתה קודם כמו עבודה, והעוזר עמד בלי לעשות כלום ובלי
+            // לחזור. עכשיו חוזרים לעוגן ומחכים שם לריספון.
+            if (m_iCurrentTarget == -1)
             {
                 m_iComboState = 0;
+                ReturnToAnchor();
                 return 0;
             }
         }
@@ -785,15 +888,10 @@ namespace MUHelper
                 return SimulateAttack(m_iCurrentSkill);
             }
 
-            // החלטת הבעלים (16/08/2026): הדמות נשארת סטטית — לא רודפים
-            // אחרי מפלצות. מטרה שמחוץ לטווח הכישוף מפנה מיד את מקומה
-            // לקרובה ביותר שכן בטווח, כך שהעוזר תמיד תוקף את מה שאפשר
-            // מהמקום, ועומד בשקט רק כשאין שום מטרה בהישג יד.
-            m_iCurrentTarget = GetNearestTarget(static_cast<int>(fSkillDistance));
-            if (m_iCurrentTarget != -1)
-            {
-                return SimulateAttack(m_iCurrentSkill);
-            }
+            // ‏CanExecuteSkill נכשל על מאנה או תנאי כישוף — לא על מרחק
+            // (המרחק נבדק בתוך SimulateSkill). ניסיון חוזר של אותו כישוף על
+            // מטרה אחרת ייכשל בדיוק אותו דבר, ולכן נופלים להתקפה הבסיסית
+            // במקום לעמוד בלי לעשות כלום עד שהמאנה תחזור.
         }
 
         if (m_config.bFallbackBasicAttack)
@@ -1004,13 +1102,14 @@ namespace MUHelper
                     return 0;
                 }
 
-                // ציד סטטי (החלטת הבעלים, 16/08/2026): העוזר לא זז בשביל
-                // לתקוף. המקור הלך כאן שני צעדים לעבר המטרה בכל פעימה —
-                // וזה בדיוק ה"רודף אחרי מפלצות" שבוטל. המטרה נשארת ברשימה
-                // (אולי תתקרב מעצמה); משחררים את התור למטרה אחרת בטווח.
+                // המטרה עוד לא בטווח הכישוף: ניגשים אליה בתוך רצועת העוגן.
+                // חורגת מהרצועה — משחררים את התור למטרה קרובה יותר.
                 if (!bTargetNear)
                 {
-                    m_iCurrentTarget = -1;
+                    if (!StepTowardTarget(tempPath))
+                    {
+                        m_iCurrentTarget = -1;
+                    }
                     return 0;
                 }
             }
@@ -1092,11 +1191,13 @@ namespace MUHelper
             return 0;
         }
 
-        // ציד סטטי (החלטת הבעלים, 16/08/2026): גם ההתקפה הבסיסית לא זזה —
-        // אותו ניטרול כמו ב-SimulateSkill. ראה ההסבר שם.
+        // גם ההתקפה הבסיסית ניגשת בתוך הרצועה — אותה התנהגות כמו ב-SimulateSkill.
         if (!bTargetNear)
         {
-            m_iCurrentTarget = -1;
+            if (!StepTowardTarget(tempPath))
+            {
+                m_iCurrentTarget = -1;
+            }
             return 0;
         }
 
@@ -1127,6 +1228,25 @@ namespace MUHelper
         }
 
         return 1;
+    }
+
+    // אין מה לתקוף: אם התרחקנו מהעוגן תוך כדי הציד, חוזרים אליו במקום
+    // להישאר תקועים בקצה הרצועה. כך מרכז אזור הציד נשאר איפה שהשחקן
+    // בחר להעמיד את הדמות, גם אחרי גל מפלצות שמשך אותה הצידה.
+    int CMuHelper::ReturnToAnchor()
+    {
+        const POINT posHero = { Hero->PositionX, Hero->PositionY };
+        if (ComputeDistanceBetween(posHero, m_posOriginal) <= ANCHOR_TOLERANCE)
+        {
+            return 1;
+        }
+
+        if (Hero->Movement)
+        {
+            return 0;
+        }
+
+        return SimulateMove(m_posOriginal);
     }
 
     int CMuHelper::SimulateMove(POINT posMove)
@@ -1346,6 +1466,14 @@ namespace MUHelper
 
             int iItemX = (int)(Items[iItemId].Object.Position[0] / TERRAIN_SCALE);
             int iItemY = (int)(Items[iItemId].Object.Position[1] / TERRAIN_SCALE);
+
+            // פריט שנפל מחוץ לאזור הציד לא שווה נדידה מהעוגן. הסינון כאן
+            // ולא ב-ObtainItem בכוונה: פריט שנבחר ואי־אפשר להגיע אליו חוסם
+            // את כל האיסוף עד שהוא נעלם.
+            if (!IsWithinHuntingArea({ iItemX, iItemY }))
+            {
+                continue;
+            }
 
             int iDistance = ComputeDistanceBetween({ Hero->PositionX, Hero->PositionY }, { iItemX, iItemY });
             if (iDistance <= iMinDistance)

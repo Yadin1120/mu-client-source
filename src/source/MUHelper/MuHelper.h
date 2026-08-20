@@ -54,6 +54,10 @@ namespace MUHelper
 		int Attack();
 		int RepairEquipments();
 		int Regroup();
+		int ReturnToAnchor();
+		bool IsWithinLeash(POINT pos);
+		bool IsWithinHuntingArea(POINT pos);
+		int StepTowardTarget(const struct _PATH_t& tempPath);
 		ActionSkillType SelectAttackSkill();
 		int SimulateAttack(ActionSkillType iSkill);
 		int SimulateSkill(ActionSkillType iSkill, bool bTargetRequired, int iTarget);
@@ -91,6 +95,8 @@ namespace MUHelper
 		ActionSkillType m_iCurrentSkill;
 		int m_iHuntingDistance;
 		int m_iObtainingDistance;
+		int m_iLeashDistance;
+		int m_iReseedCounter;
 		int m_iLoopCounter;
 		int m_iSecondsElapsed;
 		int m_iSecondsAway;
