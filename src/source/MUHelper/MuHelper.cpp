@@ -26,10 +26,15 @@ constexpr int DEFAULT_DURABILITY_THRESHOLD = 50;
 // כמה צעדים מותר לצעוד בפעימה אחת כשניגשים למטרה. הקצב של המנוע המקורי.
 constexpr int MAX_STEPS_PER_TICK = 2;
 
-// כל כמה פעימות (250ms) נסרק המסך מחדש אחרי מפלצות דוממות. פקטות הלידה
+// כמה פעימות נכנסות לשנייה. חייב להתאים ל-MUHELPER_TIMER ב-Winmain.cpp
+// (‏100ms), אחרת מוני השניות משקרים: מרווחי הכישופים לפי טיימר וזמן
+// ההתרחקות מהעוגן נמדדים בשניות ונגזרים מכאן.
+constexpr int TICKS_PER_SECOND = 10;
+
+// כל כמה פעימות נסרק המסך מחדש אחרי מפלצות דוממות. פקטות הלידה
 // והתנועה מכסות את הרוב, אבל מפלצת שנטענה בלי פקטה — אחרי ורפ, אחרי
 // התחברות מחדש, או כשהעוזר נדלק מרחוק — לא מגיעה מהן לעולם.
-constexpr int RESEED_INTERVAL_TICKS = 8;
+constexpr int RESEED_INTERVAL_TICKS = 2 * TICKS_PER_SECOND;
 
 // מרחק שנחשב "בעוגן". משבצת אחת, כמו במונה ההתרחקות של WorkLoop.
 constexpr int ANCHOR_TOLERANCE = 1;
@@ -199,7 +204,7 @@ namespace MUHelper
 
         Work();
 
-        if (m_iLoopCounter++ == 4)
+        if (++m_iLoopCounter >= TICKS_PER_SECOND)
         {
             m_iSecondsElapsed++;
 
@@ -235,17 +240,26 @@ namespace MUHelper
                 return;
             }
 
-            if (!ObtainItem())
-            {
-                return;
-            }
-
-            if (!Regroup())
-            {
-                return;
-            }
-
+            // תקיפה לפני איסוף (20/08/2026). בסדר ההפוך, כל פעימה שבה הדמות
+            // הייתה בדרך לפריט עצרה את הלולאה לפני Attack — ועם רצפה מלאה
+            // בזן זה כמעט כל פעימה, כלומר הדמות רצה בין ערימות ובקושי תוקפת.
+            // השלל לא בורח (‏20 שניות בעלות, דקה עד היעלמות); המפלצת כן.
             Attack();
+
+            // אוספים רק כשאין מטרה בהישג. כל עוד יש במי להילחם, הדמות לא
+            // עוזבת את הקרב בשביל ערימה על הרצפה.
+            if (m_iCurrentTarget == -1)
+            {
+                if (!ObtainItem())
+                {
+                    return;
+                }
+
+                if (!Regroup())
+                {
+                    return;
+                }
+            }
 
             RepairEquipments();
         }
@@ -1384,17 +1398,14 @@ namespace MUHelper
 
     bool CMuHelper::ShouldObtainItem(int iItemId)
     {
-        // אף תיבת איסוף לא סומנה מעולם = "לא כיוונתי", לא "אל תאסוף כלום".
-        // בלי זה, חשבון עם הגדרות שמורות ריקות מהשרת לא אוסף שום דבר —
-        // אחד משלושת התסמינים שנצפו ב-16/08/2026.
-        const bool bAnyPreference = m_config.bPickAllItems || m_config.bPickZen
-            || m_config.bPickJewel || m_config.bPickAncient || m_config.bPickExcellent
-            || m_config.bPickExtraItems;
-        if (!bAnyPreference)
-        {
-            return true;
-        }
-
+        // "לא סומן כלום" = לא לאסוף כלום, וזו עמידה-ותקיפה בלבד.
+        //
+        // ב-16/08/2026 זה התפרש כאן הפוך — "לא כיוונתי, אז תאסוף הכול" —
+        // כדי לפתור חשבון שהגיע עם הגדרות ריקות מהשרת ולא אסף דבר. המחיר
+        // התגלה ב-20/08: **אי-אפשר היה לבקש מהעוזר לא לאסוף**, והוא נטש
+        // כל קרב בשביל ערימת זן. החלון מציע במפורש "לאסוף הכול" מול
+        // "לאסוף נבחרים", ולכן לשחקן יש דרך ברורה להביע את הכוונה ההפוכה,
+        // ואין סיבה לנחש במקומו.
         ITEM_t* pDrop = &Items[iItemId];
         ITEM* pItem = &pDrop->Item;
 

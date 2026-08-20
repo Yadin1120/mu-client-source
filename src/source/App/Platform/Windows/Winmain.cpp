@@ -1817,7 +1817,11 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int nC
 
     auto& timers = Core::Time::FrameTimerScheduler::Instance();
     timers.SetRepeating(HACK_TIMER, 20 * 1000, [] { CheckHack(); });
-    timers.SetRepeating(MUHELPER_TIMER, 250 /* ms */,
+    // ‏100ms ולא 250: קצב התקיפה של העוזר נחסם בפועל על ידי הפעימה ולא על
+    // ידי מהירות ההתקפה של הדמות. שחקן שמחזיק התקפה יורה ברגע שהנפנוף
+    // נגמר; ב-250ms הוא היה מחכה עד רבע שנייה מיותרת בכל מכה. ⚠️ המספר
+    // הזה קשור ל-TICKS_PER_SECOND ב-MuHelper.cpp — לשנות את שניהם יחד.
+    timers.SetRepeating(MUHELPER_TIMER, 100 /* ms */,
         [] { MUHelper::CMuHelper::TimerProc(nullptr, 0, MUHELPER_TIMER, 0); });
 
     srand((unsigned)time(nullptr));
