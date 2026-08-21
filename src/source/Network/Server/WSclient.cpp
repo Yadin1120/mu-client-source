@@ -13409,6 +13409,16 @@ static void ProcessPacket(const BYTE* ReceiveBuffer, int32_t Size)
                 CUIMng::Instance().PopUpMsgWin(RECEIVE_LOG_IN_FAIL_ID_BLOCK);
                 break;
             case 0x06:
+                // דחיית גרסה היא **סופית**: שום דבר לא ישתנה עד שהשחקן יעדכן,
+                // ולכן אין שום טעם שהחיבור-מחדש האוטומטי ינסה שוב.
+                //
+                // װ`UpdateLoggingIn` מניח שדחייה היא זמנית ("הסשן הישן עוד רשום
+                // כמחובר, יינקה תוך כמה שניות") ולכן נכנס ל-Retrying. ההנחה הזאת
+                // נכונה לכל שאר הדחיות ושגויה בדיוק כאן.
+                //
+                // נמדד ב-21/08/2026, בפעם הראשונה ששער הגרסה עבר לחסימה: אותו
+                // קליינט נדחה תשע פעמים ברצף, בדיוק כל 15 שניות.
+                ReconnectManager::Instance().RequestCancel();
                 CUIMng::Instance().PopUpMsgWin(RECEIVE_LOG_IN_FAIL_VERSION);
                 g_ErrorReport.Write(L"Version dismatch. - Login\r\n");
                 break;

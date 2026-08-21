@@ -16,6 +16,25 @@ namespace Core::Input
             if (vk >= '1' && vk <= '9') return static_cast<SDL_Scancode>(SDL_SCANCODE_1 + (vk - '1'));
             if (vk == '0') return SDL_SCANCODE_0;
 
+            // The numeric keypad. Missing here since the move to SDL, which meant
+            // every keypad key fell through to SDL_SCANCODE_UNKNOWN and IsKeyDown
+            // returned false for it — the whole pad was dead in game, and a player
+            // who binds skills to it (the normal MU habit) had nothing happen.
+            // Reported by a player 21/08/2026.
+            //
+            // Note these are the KP_ scancodes and not the number-row ones: SDL
+            // keeps them apart, so keypad 1 sets SDL_SCANCODE_KP_1 and nothing else.
+            // SDL orders them KP_1..KP_9 and then KP_0, so 0 needs its own line.
+            //
+            // Deliberately independent of Num Lock. Windows reports a keypad key as
+            // VK_NUMPAD1 or as VK_END depending on that state, while SDL scancodes
+            // are physical and never change — so the key now does the same thing
+            // whichever way the lock happens to sit. That is what a player expects
+            // from a skill key, and it removes a whole class of "it worked
+            // yesterday" reports.
+            if (vk >= VK_NUMPAD1 && vk <= VK_NUMPAD9) return static_cast<SDL_Scancode>(SDL_SCANCODE_KP_1 + (vk - VK_NUMPAD1));
+            if (vk == VK_NUMPAD0) return SDL_SCANCODE_KP_0;
+
             switch (vk)
             {
             case VK_UP:      return SDL_SCANCODE_UP;
@@ -46,6 +65,12 @@ namespace Core::Input
             case VK_F11:     return SDL_SCANCODE_F11;
             case VK_F12:     return SDL_SCANCODE_F12;
             case VK_SNAPSHOT: return SDL_SCANCODE_PRINTSCREEN;
+            case VK_MULTIPLY: return SDL_SCANCODE_KP_MULTIPLY;
+            case VK_ADD:      return SDL_SCANCODE_KP_PLUS;
+            case VK_SUBTRACT: return SDL_SCANCODE_KP_MINUS;
+            case VK_DECIMAL:  return SDL_SCANCODE_KP_PERIOD;
+            case VK_DIVIDE:   return SDL_SCANCODE_KP_DIVIDE;
+            case VK_NUMLOCK:  return SDL_SCANCODE_NUMLOCKCLEAR;
             default:         return SDL_SCANCODE_UNKNOWN;
             }
         }

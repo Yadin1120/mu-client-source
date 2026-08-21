@@ -69,16 +69,56 @@ static const struct { const char* code; const wchar_t* label; } s_Languages[] = 
 };
 static const int s_NumLanguages = sizeof(s_Languages) / sizeof(s_Languages[0]);
 
+bool MuGetDesktopSize(int& width, int& height);
+
+// Which entries of s_Resolutions this monitor can actually display, as indices
+// into it. Everything below goes through here rather than through s_Resolutions
+// directly, so an unusable mode is never offered in the first place.
+//
+// Why filter instead of reporting the failure: picking a mode the monitor
+// rejects made ChangeDisplaySettings fail, and the code then quietly put the
+// combo back and returned. To the player that is "I clicked and nothing
+// happened" - and it happens exactly when they are trying to escape a screen
+// they cannot read. Reported by a player 21/08/2026, who had chosen 2560x1440
+// in the launcher on a 24" 1080p screen and could not get back out.
+//
+// Not a simple prefix of the array: on a 1920x1080 desktop, 1280x1024 fits and
+// 1600x1200 does not, while 1680x1050 and 1920x1080 further along both do.
+static int s_Usable[s_NumResolutions] = {};
+static int s_NumUsable = 0;
+
+static void BuildUsableResolutions()
+{
+    if (s_NumUsable > 0)
+        return;
+
+    int deskWidth = 0, deskHeight = 0;
+    const bool known = MuGetDesktopSize(deskWidth, deskHeight);
+
+    for (int i = 0; i < s_NumResolutions; i++)
+    {
+        // If the screen size cannot be determined, offer everything rather than
+        // nothing - a wrong guess must not leave the player with no choices.
+        if (!known || (s_Resolutions[i].width <= deskWidth && s_Resolutions[i].height <= deskHeight))
+            s_Usable[s_NumUsable++] = i;
+    }
+
+    // A monitor smaller than the smallest entry would otherwise empty the combo.
+    if (s_NumUsable == 0)
+        s_Usable[s_NumUsable++] = 0;
+}
+
 // Label pointer array for the resolution combo box. Built once on first use
-// from s_Resolutions so the combo can consume a plain `const wchar_t* const*`.
+// from the usable entries so the combo can consume a plain `const wchar_t* const*`.
 static const wchar_t* const* GetResolutionLabels()
 {
     static const wchar_t* labels[s_NumResolutions] = {};
     static bool initialized = false;
     if (!initialized)
     {
-        for (int i = 0; i < s_NumResolutions; i++)
-            labels[i] = s_Resolutions[i].label;
+        BuildUsableResolutions();
+        for (int i = 0; i < s_NumUsable; i++)
+            labels[i] = s_Resolutions[s_Usable[i]].label;
         initialized = true;
     }
     return labels;
@@ -218,13 +258,17 @@ bool SEASON3B::CNewUIOptionWindow::Create(CNewUIManager* pNewUIMng, int x, int y
 
 void SEASON3B::CNewUIOptionWindow::InitResolutionCombo()
 {
+    // Before Setup: the count and the labels must come from the same built list,
+    // and argument evaluation order inside the call is unspecified in C++.
+    BuildUsableResolutions();
+
     m_ResolutionCombo.Setup(
         m_Pos.x + RES_COMBO_X_LOCAL,
         m_Pos.y + RES_COMBO_Y_LOCAL,
         RES_COMBO_WIDTH,
         RES_COMBO_HEIGHT,
         GetResolutionLabels(),
-        s_NumResolutions,
+        s_NumUsable,
         m_iResolutionIndex,
         RES_COMBO_MAX_VISIBLE);
 }
@@ -965,12 +1009,19 @@ bool SEASON3B::CNewUIOptionWindow::GetRenderAllEffects()
 
 int SEASON3B::CNewUIOptionWindow::FindCurrentResolutionIndex()
 {
-    for (int i = 0; i < s_NumResolutions; ++i)
+    BuildUsableResolutions();
+
+    for (int i = 0; i < s_NumUsable; ++i)
     {
-        if (s_Resolutions[i].width == (int)WindowWidth && s_Resolutions[i].height == (int)WindowHeight)
+        if (s_Resolutions[s_Usable[i]].width == (int)WindowWidth && s_Resolutions[s_Usable[i]].height == (int)WindowHeight)
             return i;
     }
-    return 8; // default to 1920x1080
+
+    // Was a hard-coded 8 ("1920x1080"), which is out of range as soon as the
+    // list is filtered - on a 1366x768 laptop the usable list is three entries
+    // long. The largest the monitor can show is both in range and the sensible
+    // default, and the list is ordered ascending, so that is the last one.
+    return s_NumUsable > 0 ? s_NumUsable - 1 : 0;
 }
 
 int SEASON3B::CNewUIOptionWindow::FindCurrentLanguageIndex()
@@ -1027,8 +1078,12 @@ void SEASON3B::CNewUIOptionWindow::ApplyFont()
 
 void SEASON3B::CNewUIOptionWindow::ApplyResolution()
 {
-    const unsigned int newWidth  = s_Resolutions[m_iResolutionIndex].width;
-    const unsigned int newHeight = s_Resolutions[m_iResolutionIndex].height;
+    BuildUsableResolutions();
+    if (m_iResolutionIndex < 0 || m_iResolutionIndex >= s_NumUsable)
+        return;
+
+    const unsigned int newWidth  = s_Resolutions[s_Usable[m_iResolutionIndex]].width;
+    const unsigned int newHeight = s_Resolutions[s_Usable[m_iResolutionIndex]].height;
 
 #ifndef _WIN32
     // SDL owns the window off Windows; the Win32 SetWindowPos/ChangeDisplaySettings

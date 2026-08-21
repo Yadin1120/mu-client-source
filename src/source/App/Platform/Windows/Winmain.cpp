@@ -1064,6 +1064,22 @@ namespace
     }
 }
 
+// The size of the screen the game is on, for callers that must not offer a
+// resolution the monitor cannot display. Both platforms: SDL owns the window
+// everywhere since #442, so there is no reason for a Win32-only variant.
+// Returns false if SDL cannot answer and leaves the outputs untouched - a
+// caller that cannot find out should offer everything rather than nothing.
+bool MuGetDesktopSize(int& width, int& height)
+{
+    const SDL_DisplayMode* desktop = SDL_GetDesktopDisplayMode(SDL_GetPrimaryDisplay());
+    if (desktop == nullptr || desktop->w <= 0 || desktop->h <= 0)
+        return false;
+
+    width = desktop->w;
+    height = desktop->h;
+    return true;
+}
+
 #ifndef _WIN32
 // Portable resolution change (issue #462). The Win32 path in ApplyResolution()
 // is entirely g_hWnd-gated and drives a synchronous WM_SIZE, neither of which
@@ -1654,6 +1670,28 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int nC
         const SDL_DisplayMode* desktop = SDL_GetDesktopDisplayMode(SDL_GetPrimaryDisplay());
         WindowWidth  = (desktop && desktop->w > 0) ? desktop->w : CfgDefaults::CfgFallbackWindowWidth;
         WindowHeight = (desktop && desktop->h > 0) ? desktop->h : CfgDefaults::CfgFallbackWindowHeight;
+    }
+    else
+    {
+        // 🔴 A saved size larger than the monitor is a dead end, not a bad look.
+        // Reported 21/08/2026: a player picked 2560x1440 in the launcher on a
+        // 24" 1080p screen, the game came up on a display that cannot show it,
+        // and the way out - the in-game options window - is itself unreadable.
+        // Worse, choosing a supported mode there fails silently, because the
+        // monitor rejects the change and the code quietly reverts. So the one
+        // recovery path looks broken exactly when it is needed.
+        //
+        // Nothing is written back to config: the player's choice is kept, and
+        // if they later attach a monitor that can show it, it applies. This
+        // only refuses to *start* on a size the current screen cannot display.
+        const SDL_DisplayMode* desktop = SDL_GetDesktopDisplayMode(SDL_GetPrimaryDisplay());
+        if (desktop && desktop->w > 0 && desktop->h > 0 &&
+            (WindowWidth > desktop->w || WindowHeight > desktop->h))
+        {
+            g_ErrorReport.Write(L"> Saved resolution is larger than the screen; falling back to the desktop mode.\r\n");
+            WindowWidth  = desktop->w;
+            WindowHeight = desktop->h;
+        }
     }
 
     // Fullscreen is requested via an SDL window flag below; SDL handles the
