@@ -1,0 +1,114 @@
+//************************************************************************
+//
+// Decompiled by @myheart, @synth3r
+// <https://forum.ragezone.com/members/2000236254.html>
+//
+//
+// FILE: BannerInfoList.cpp
+//
+//
+
+#include "stdafx.h"
+#ifdef KJH_ADD_INGAMESHOP_UI_SYSTEM
+#include "BannerInfoList.h"
+#include "BannerInfo.h"
+#include <filesystem>
+#include <fstream>
+#include <iterator>   // std::size
+
+#ifndef _WIN32
+#include "Core/Platform/PathResolve.h"
+#endif
+
+CBannerInfoList::CBannerInfoList() // OK
+{
+    this->Clear();
+}
+
+CBannerInfoList::~CBannerInfoList() // OK
+{
+}
+
+WZResult CBannerInfoList::LoadBanner(std::wstring strDirPath, std::wstring strScriptFileName, bool bDonwLoad)
+{
+    static WZResult result;
+
+    result.BuildSuccessResult();
+
+    std::wifstream ifs;
+
+    std::wstring path = strDirPath + strScriptFileName;
+
+    // Same resolution the catalog parser needs: the composed path is
+    // Windows-spelled, and off Windows a backslash is a filename character
+    // rather than a separator.
+#ifdef _WIN32
+    ifs.open(std::filesystem::path(path), std::ifstream::in);
+#else
+    ifs.open(std::filesystem::path(
+                 MuResolvePath(std::filesystem::path(path).string().c_str())),
+             std::ifstream::in);
+#endif
+
+    if (ifs.is_open())
+    {
+        this->Clear();
+
+        wchar_t buff[1024] = { 0 };
+
+        while (true)
+        {
+            // std::size, not sizeof: wchar_t is 4 bytes off Windows, so
+            // sizeof gave getline a 4096-element budget for a 1024-element
+            // array - a stack smash on any long banner line.
+            if (!ifs.getline(buff, std::size(buff)))
+                break;
+
+            CBannerInfo info;
+
+            if (info.SetBanner(buff, strDirPath, bDonwLoad))
+            {
+                this->Append(info);
+            }
+        }
+
+        ifs.close();
+    }
+    else
+    {
+        result.SetResult(6, GetLastError(), L"Banner file open fail");
+    }
+
+    return result;
+}
+
+void CBannerInfoList::Clear() // OK
+{
+    this->m_BannerInfos.clear();
+}
+
+int CBannerInfoList::GetSize() // OK
+{
+    return this->m_BannerInfos.size();
+}
+
+void CBannerInfoList::Append(CBannerInfo banner) // OK
+{
+    this->m_BannerInfos.insert(std::make_pair(banner.BannerSeq, banner));
+}
+
+void CBannerInfoList::SetFirst() // OK
+{
+    this->m_BannerInfoIter = this->m_BannerInfos.begin();
+}
+bool CBannerInfoList::GetNext(CBannerInfo& banner) // OK
+{
+    if (this->m_BannerInfoIter == this->m_BannerInfos.end())
+        return 0;
+
+    banner = this->m_BannerInfoIter->second;
+
+    this->m_BannerInfoIter++;
+    return 1;
+}
+#endif
