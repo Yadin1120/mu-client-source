@@ -22,6 +22,10 @@ FrameTimingState g_frameTiming;
 // Scene Manager Implementation
 //=============================================================================
 #include "SceneCommon.h"
+#include "SceneCore.h"  // szServerIpAddress / g_ServerPort לנחיתת הלובי
+
+// מוגדר ב-WSclient.cpp; אין לו הצהרה בכותרת (כמו ב-ReconnectManager.cpp).
+extern int LogIn;
 #include "WebzenScene.h"
 #include "LoginScene.h"
 #include "CharacterScene.h"
@@ -637,6 +641,35 @@ static void CheckServerConnection()
         // the brief re-login phase shows it frozen instead of a black screen.
         UI::Reconnect::CaptureBackground();
         ReconnectManager::Instance().RequestBegin();
+        return;
+    }
+
+    // 🔴 במסכי הלובי (כניסה/בחירת דמות) ניתוק היה מבוי סתום: שרת ההתחברות
+    // מנתק אחרי כדקת חוסר פעילות, ההודעה היחידה הציעה כפתור אחד שסוגר את
+    // המשחק, ולפעמים הקריסה הקדימה אפילו אותה. נמדד 21/08/2026: שמונה
+    // קריסות ביום אחד, כולן "התעכבתי בבחירת שרת והמשחק נעלם". במקום זה —
+    // נחיתה רכה: חזרה למסך הכניסה וחיבור חדש לשרת ההתחברות, בדיוק הרצף
+    // ש-ReconnectManager::Abort() עושה. מרווח 5 שניות בין ניסיונות, כדי
+    // שגם בלי רשת בכלל לא ניכנס ללולאת חיבורים צפופה.
+    if (SceneFlag == LOG_IN_SCENE || SceneFlag == CHARACTER_SCENE)
+    {
+        static double s_lastRelandTime = -10000.0;
+        if (WorldTime - s_lastRelandTime < 5000.0)
+        {
+            return;
+        }
+
+        s_lastRelandTime = WorldTime;
+        g_ErrorReport.Write(L"> Connection closed in lobby - reconnecting to the connect server. ");
+        g_ErrorReport.WriteCurrentTime();
+        g_ConsoleDebug->Write(MCD_NORMAL, L"Lobby connection closed - reconnecting");
+
+        DeleteSocket();
+        g_sceneInit.ResetForDisconnect();
+        SceneFlag = LOG_IN_SCENE;
+        LogIn = 0;
+        CurrentProtocolState = REQUEST_JOIN_SERVER;
+        CreateSocket(szServerIpAddress, g_ServerPort);
         return;
     }
 

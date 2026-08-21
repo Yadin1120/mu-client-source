@@ -8,8 +8,13 @@ namespace Core::Time
 {
     FrameTimerScheduler& FrameTimerScheduler::Instance()
     {
-        static FrameTimerScheduler instance;
-        return instance;
+        // בכוונה דולף ולעולם לא נהרס: הרסני גלובלים (למשל ~CSlideHelpMgr)
+        // קוראים ל-Kill() בזמן הרס הסטטיים, ומופע סטטי רגיל עלול להיהרס
+        // לפניהם — וכל יציאה מהמשחק קרסה ב-0xc0000005 בתוך מפת הטיימרים
+        // (נמדד 21/08/2026, אותו offset בשלוש בניות שונות). דליפה של אובייקט
+        // אחד ברגע היציאה היא המחיר של סדר הרס שאי אפשר להבטיח.
+        static FrameTimerScheduler* instance = new FrameTimerScheduler();
+        return *instance;
     }
 
     std::uint64_t FrameTimerScheduler::NowMs()

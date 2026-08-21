@@ -274,7 +274,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     # /OPT:REF ו-/OPT:ICF**, ובלי להחזיר אותם במפורש הבינארי המופץ היה גדל
     # ומאבד אופטימיזציות קישור — מלכודת ידועה של MSVC.
     target_compile_options(Main PRIVATE $<$<CONFIG:Release>:/Zi>)
-    target_link_options(Main PRIVATE $<$<CONFIG:Release>:/DEBUG /OPT:REF /OPT:ICF>)
+    target_link_options(Main PRIVATE $<$<CONFIG:Release>:/DEBUG /OPT:REF /OPT:ICF /MAP:${CMAKE_CURRENT_BINARY_DIR}/Main.map>)
     target_compile_options(MuClient PRIVATE $<$<CONFIG:Release>:/Zi>)
   endif()
 
