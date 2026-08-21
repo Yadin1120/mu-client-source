@@ -227,6 +227,27 @@ inline constexpr ENUMTYPE operator ~ (ENUMTYPE a) { using T = std::underlying_ty
 #define VK_F11       0x7A
 #define VK_F12       0x7B
 
+// The numeric keypad. Added 21/08/2026 with the keypad fix in KeyState.cpp -
+// that file is cross-platform and names these constants, so without them here
+// the mac build stops at "VK_NUMPAD1 was not declared". Values are the real
+// Win32 ones, so the two platforms keep speaking the same key codes.
+#define VK_NUMPAD0   0x60
+#define VK_NUMPAD1   0x61
+#define VK_NUMPAD2   0x62
+#define VK_NUMPAD3   0x63
+#define VK_NUMPAD4   0x64
+#define VK_NUMPAD5   0x65
+#define VK_NUMPAD6   0x66
+#define VK_NUMPAD7   0x67
+#define VK_NUMPAD8   0x68
+#define VK_NUMPAD9   0x69
+#define VK_MULTIPLY  0x6A
+#define VK_ADD       0x6B
+#define VK_SUBTRACT  0x6D
+#define VK_DECIMAL   0x6E
+#define VK_DIVIDE    0x6F
+#define VK_NUMLOCK   0x90
+
 // Window messages (winuser.h). App-defined WM_USER+n messages live elsewhere.
 #define WM_USER          0x0400
 #define WM_DESTROY       0x0002
