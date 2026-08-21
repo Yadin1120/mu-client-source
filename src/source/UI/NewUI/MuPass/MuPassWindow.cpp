@@ -14,6 +14,8 @@
 #include "App/Platform/Windows/Winmain.h"
 #include "Camera/CameraProjection.h"
 #include "Camera/CameraState.h"
+#include "Core/Localization/TextDirection.h"
+#include "I18N/All.h"
 #include <cmath>
 
 SEASON3B::CMuPassWindow* g_pMuPassWindow = nullptr;
@@ -23,6 +25,22 @@ namespace
     using GameLogic::MuPass::RewardState;
 
     constexpr DWORD PRO_CONFIRM_TIMEOUT_MS = 5000;
+
+    // The window was laid out for Hebrew: titles hug the right edge and the
+    // progress bar grows leftwards. That is the reading order in Hebrew and the
+    // wrong one in English, so alignment follows the locale instead of being
+    // baked in. Hebrew keeps exactly the layout it has today.
+    //
+    // "Leading" is where a line of text starts, "trailing" is the far edge.
+    int SortLeading() noexcept
+    {
+        return Core::Localization::IsRightToLeft() ? RT3_SORT_RIGHT : RT3_SORT_LEFT;
+    }
+
+    int SortTrailing() noexcept
+    {
+        return Core::Localization::IsRightToLeft() ? RT3_SORT_LEFT : RT3_SORT_RIGHT;
+    }
     // 8 rows + the pro section header is the most that fits between BODY_TOP and
     // BODY_BOTTOM without spilling into the bottom button bar.
     constexpr int MAX_VISIBLE_MISSIONS = 8;
@@ -439,13 +457,13 @@ void SEASON3B::CMuPassWindow::RenderHeader()
     SetTextGold();
     // No season name here on purpose: the season can be renamed in the admin panel and the
     // status packet doesn't carry the name, so a hardcoded one would eventually be a lie.
-    g_pRenderText->RenderText(m_Pos.x + 12, m_Pos.y + 6, L"MU Pass", WND_WIDTH - 24, 0, RT3_SORT_RIGHT);
+    g_pRenderText->RenderText(m_Pos.x + 12, m_Pos.y + 6, L"MU Pass", WND_WIDTH - 24, 0, SortLeading());
 
     g_pRenderText->SetFont(g_hFont);
     SetTextMuted();
     wchar_t szText[128];
-    swprintf_s(szText, L"מסתיימת בעוד %d ימים", state.iSeasonDaysLeft);
-    g_pRenderText->RenderText(m_Pos.x + 12, m_Pos.y + 20, szText, WND_WIDTH - 24, 0, RT3_SORT_RIGHT);
+    swprintf_s(szText, I18N::Game::EndsInDDays, state.iSeasonDaysLeft);
+    g_pRenderText->RenderText(m_Pos.x + 12, m_Pos.y + 20, szText, WND_WIDTH - 24, 0, SortLeading());
 
     // Close button.
     OutlineRect(m_Pos.x + 8, m_Pos.y + 7, 20, 20, COL_GOLD_DARK);
@@ -454,7 +472,7 @@ void SEASON3B::CMuPassWindow::RenderHeader()
 
     // Info toggle.
     OutlineRect(m_Pos.x + 34, m_Pos.y + 7, 120, 20, COL_GOLD_DARK);
-    g_pRenderText->RenderText(m_Pos.x + 36, m_Pos.y + 11, L"מה זה MU Pass?", 116, 0, RT3_SORT_CENTER);
+    g_pRenderText->RenderText(m_Pos.x + 36, m_Pos.y + 11, I18N::Game::WhatIsMUPass, 116, 0, RT3_SORT_CENTER);
 }
 
 void SEASON3B::CMuPassWindow::RenderPointsMeter()
@@ -465,21 +483,21 @@ void SEASON3B::CMuPassWindow::RenderPointsMeter()
 
     g_pRenderText->SetFont(g_hFontBold);
     SetTextGold();
-    swprintf_s(szText, L"דרגה %d מתוך %d", state.iLevel, GameLogic::MuPass::MAX_PASS_LEVEL);
-    g_pRenderText->RenderText(m_Pos.x + 12, iBaseY, szText, WND_WIDTH - 24, 0, RT3_SORT_RIGHT);
+    swprintf_s(szText, I18N::Game::LevelDOfD, state.iLevel, GameLogic::MuPass::MAX_PASS_LEVEL);
+    g_pRenderText->RenderText(m_Pos.x + 12, iBaseY, szText, WND_WIDTH - 24, 0, SortLeading());
 
     g_pRenderText->SetFont(g_hFont);
     SetTextIvory();
     if (state.iPointsForNextLevel > 0)
     {
-        swprintf_s(szText, L"נקודות גובלין: %d / %d", state.iPointsIntoLevel, state.iPointsForNextLevel);
+        swprintf_s(szText, I18N::Game::GoblinPointsDD, state.iPointsIntoLevel, state.iPointsForNextLevel);
     }
     else
     {
-        swprintf_s(szText, L"נקודות גובלין: %d — דרגה מקסימלית!", state.iTotalPoints);
+        swprintf_s(szText, I18N::Game::GoblinPointsDMaxLevel, state.iTotalPoints);
     }
 
-    g_pRenderText->RenderText(m_Pos.x + 12, iBaseY + 2, szText, WND_WIDTH - 24, 0, RT3_SORT_LEFT);
+    g_pRenderText->RenderText(m_Pos.x + 12, iBaseY + 2, szText, WND_WIDTH - 24, 0, SortTrailing());
 
     // Progress bar.
     const int iBarY = iBaseY + 20;
@@ -490,8 +508,12 @@ void SEASON3B::CMuPassWindow::RenderPointsMeter()
     {
         const float fRatio = static_cast<float>(state.iPointsIntoLevel) / static_cast<float>(state.iPointsForNextLevel);
         const int iFillWidth = static_cast<int>((iBarWidth - 2) * (fRatio > 1.f ? 1.f : fRatio));
-        // RTL bar - fills from the right edge leftwards.
-        FillRect(m_Pos.x + 12 + iBarWidth - 1 - iFillWidth, iBarY + 1, iFillWidth, 10, COL_BAR_FILL);
+        // The bar grows from the reading edge: right-to-left in Hebrew,
+        // left-to-right everywhere else.
+        const int iFillX = Core::Localization::IsRightToLeft()
+            ? m_Pos.x + 12 + iBarWidth - 1 - iFillWidth
+            : m_Pos.x + 13;
+        FillRect(iFillX, iBarY + 1, iFillWidth, 10, COL_BAR_FILL);
     }
     else
     {
@@ -500,7 +522,7 @@ void SEASON3B::CMuPassWindow::RenderPointsMeter()
 
     // Tier line.
     SetTextMuted();
-    g_pRenderText->RenderText(m_Pos.x + 12, iBarY + 16, L"דרגות 1–10: ‏1,000 נק'  |  דרגות 10–20: ‏1,500 נק'  |  דרגות 20–30: ‏2,000 נק'", WND_WIDTH - 24, 0, RT3_SORT_CENTER);
+    g_pRenderText->RenderText(m_Pos.x + 12, iBarY + 16, I18N::Game::Levels1101000PtsLevels10201500PtsLevels20302000Pts, WND_WIDTH - 24, 0, RT3_SORT_CENTER);
 }
 
 void SEASON3B::CMuPassWindow::RenderMissions()
@@ -512,29 +534,29 @@ void SEASON3B::CMuPassWindow::RenderMissions()
 
     g_pRenderText->SetFont(g_hFontBold);
     SetTextGold();
-    swprintf_s(szText, L"משימות יומיות · %d/%d", state.iCompletedTodayFree, state.iTotalTodayFree);
-    g_pRenderText->RenderText(iColumnX, iRowY, szText, MISSIONS_COLUMN_WIDTH, 0, RT3_SORT_RIGHT);
+    swprintf_s(szText, I18N::Game::DailyMissionsDD, state.iCompletedTodayFree, state.iTotalTodayFree);
+    g_pRenderText->RenderText(iColumnX, iRowY, szText, MISSIONS_COLUMN_WIDTH, 0, SortLeading());
 
     g_pRenderText->SetFont(g_hFont);
     SetTextMuted();
     wchar_t szCountdown[32];
     FormatCountdown(GameLogic::MuPass::GetSecondsUntilResetNow(), szCountdown, 32);
-    swprintf_s(szText, L"חדשות בעוד %ls", szCountdown);
-    g_pRenderText->RenderText(iColumnX, iRowY + 2, szText, MISSIONS_COLUMN_WIDTH, 0, RT3_SORT_LEFT);
+    swprintf_s(szText, I18N::Game::NewOnesInLs, szCountdown);
+    g_pRenderText->RenderText(iColumnX, iRowY + 2, szText, MISSIONS_COLUMN_WIDTH, 0, SortTrailing());
     iRowY += 18;
 
     if (state.bDailyBonusGranted)
     {
         SetTextGreen();
-        swprintf_s(szText, L"בונוס +%d על כל המשימות — התקבל!", state.iDailyBonusPoints);
+        swprintf_s(szText, I18N::Game::BonusDForEveryMissionClaimed, state.iDailyBonusPoints);
     }
     else
     {
         SetTextMuted();
-        swprintf_s(szText, L"השלם את כל ה-%d: בונוס +%d נק'", state.iTotalTodayFree, state.iDailyBonusPoints);
+        swprintf_s(szText, I18N::Game::FinishAllDBonusDPts, state.iTotalTodayFree, state.iDailyBonusPoints);
     }
 
-    g_pRenderText->RenderText(iColumnX, iRowY, szText, MISSIONS_COLUMN_WIDTH, 0, RT3_SORT_RIGHT);
+    g_pRenderText->RenderText(iColumnX, iRowY, szText, MISSIONS_COLUMN_WIDTH, 0, SortLeading());
 
     // Uncompleted missions carry over, so the list is regularly longer than the rows that
     // fit here. Clamp the scroll offset every frame - the list length changes underneath it.
@@ -553,11 +575,11 @@ void SEASON3B::CMuPassWindow::RenderMissions()
     if (iTotal > MAX_VISIBLE_MISSIONS)
     {
         SetTextMuted();
-        swprintf_s(szText, L"%d-%d מתוך %d · גלול בגלגלת העכבר",
+        swprintf_s(szText, I18N::Game::DDOfDScrollWithTheMouseWheel,
             m_iMissionScroll + 1,
             (m_iMissionScroll + MAX_VISIBLE_MISSIONS < iTotal) ? m_iMissionScroll + MAX_VISIBLE_MISSIONS : iTotal,
             iTotal);
-        g_pRenderText->RenderText(iColumnX, iRowY, szText, MISSIONS_COLUMN_WIDTH, 0, RT3_SORT_LEFT);
+        g_pRenderText->RenderText(iColumnX, iRowY, szText, MISSIONS_COLUMN_WIDTH, 0, SortTrailing());
     }
 
     iRowY += 16;
@@ -574,8 +596,8 @@ void SEASON3B::CMuPassWindow::RenderMissions()
             bProHeaderShown = true;
             g_pRenderText->SetFont(g_hFontBold);
             SetTextPurple();
-            const wchar_t* pszProTitle = state.bIsPro ? L"משימות פרו" : L"משימות פרו · נעולות";
-            g_pRenderText->RenderText(iColumnX, iRowY + 4, pszProTitle, MISSIONS_COLUMN_WIDTH, 0, RT3_SORT_RIGHT);
+            const wchar_t* pszProTitle = state.bIsPro ? I18N::Game::ProMissions : I18N::Game::ProMissionsLocked;
+            g_pRenderText->RenderText(iColumnX, iRowY + 4, pszProTitle, MISSIONS_COLUMN_WIDTH, 0, SortLeading());
             g_pRenderText->SetFont(g_hFont);
             iRowY += 20;
         }
@@ -588,7 +610,7 @@ void SEASON3B::CMuPassWindow::RenderMissions()
     if (state.Missions.empty())
     {
         SetTextMuted();
-        g_pRenderText->RenderText(iColumnX, iRowY + 8, L"טוען משימות…", MISSIONS_COLUMN_WIDTH, 0, RT3_SORT_CENTER);
+        g_pRenderText->RenderText(iColumnX, iRowY + 8, I18N::Game::LoadingMissions, MISSIONS_COLUMN_WIDTH, 0, RT3_SORT_CENTER);
     }
 }
 
@@ -648,7 +670,7 @@ void SEASON3B::CMuPassWindow::RenderMissionRow(const GameLogic::MuPass::Mission&
 
     // The text box starts to the left of the progress box instead of overlapping it -
     // a long mission name used to run into the points and both became unreadable.
-    g_pRenderText->RenderText(iColumnX + PROGRESS_BOX_WIDTH + 10, iRowY + 5, mission.szText, MISSION_TEXT_WIDTH, 0, RT3_SORT_RIGHT);
+    g_pRenderText->RenderText(iColumnX + PROGRESS_BOX_WIDTH + 10, iRowY + 5, mission.szText, MISSION_TEXT_WIDTH, 0, SortLeading());
     g_pRenderText->SetFont(g_hFont);
 
     // Progress / points (left side).
@@ -684,23 +706,23 @@ void SEASON3B::CMuPassWindow::RenderRewardTrack()
 
     g_pRenderText->SetFont(g_hFontBold);
     SetTextGold();
-    g_pRenderText->RenderText(iColumnX, iRowY, L"מסלול הפרסים", TRACK_COLUMN_WIDTH, 0, RT3_SORT_RIGHT);
+    g_pRenderText->RenderText(iColumnX, iRowY, I18N::Game::RewardTrack, TRACK_COLUMN_WIDTH, 0, SortLeading());
     g_pRenderText->SetFont(g_hFont);
     iRowY += 16;
 
     if (state.Track.empty())
     {
         SetTextMuted();
-        g_pRenderText->RenderText(iColumnX, iRowY + 8, L"טוען פרסים…", TRACK_COLUMN_WIDTH, 0, RT3_SORT_CENTER);
+        g_pRenderText->RenderText(iColumnX, iRowY + 8, I18N::Game::LoadingRewards, TRACK_COLUMN_WIDTH, 0, RT3_SORT_CENTER);
         return;
     }
 
     // Column captions sit directly above their slot columns, so it's obvious which
     // column is which track.
     SetTextMuted();
-    g_pRenderText->RenderText(iFreeSlotX, iRowY, L"חינם", TRACK_SLOT_SIZE, 0, RT3_SORT_CENTER);
+    g_pRenderText->RenderText(iFreeSlotX, iRowY, I18N::Game::Free, TRACK_SLOT_SIZE, 0, RT3_SORT_CENTER);
     SetTextPurple();
-    g_pRenderText->RenderText(iProSlotX, iRowY, L"פרו", TRACK_SLOT_SIZE, 0, RT3_SORT_CENTER);
+    g_pRenderText->RenderText(iProSlotX, iRowY, I18N::Game::Pro, TRACK_SLOT_SIZE, 0, RT3_SORT_CENTER);
     iRowY += 14;
 
     const int iRowCount = static_cast<int>(state.Track.size());
@@ -943,7 +965,7 @@ void SEASON3B::CMuPassWindow::RenderBottomButtons()
         OutlineRect(iCollectX, iButtonY, BUTTON_WIDTH, BUTTON_HEIGHT, COL_GOLD);
         g_pRenderText->SetFont(g_hFontBold);
         g_pRenderText->SetTextColor(20, 16, 12, 255);
-        swprintf_s(szText, L"אסוף פרס — דרגה %d", iReadyLevel);
+        swprintf_s(szText, I18N::Game::ClaimRewardLevelD, iReadyLevel);
         g_pRenderText->RenderText(iCollectX, iButtonY + 10, szText, BUTTON_WIDTH, 0, RT3_SORT_CENTER);
     }
     else
@@ -952,7 +974,7 @@ void SEASON3B::CMuPassWindow::RenderBottomButtons()
         OutlineRect(iCollectX, iButtonY, BUTTON_WIDTH, BUTTON_HEIGHT, COL_GOLD_DARK, 0.5f);
         g_pRenderText->SetFont(g_hFont);
         SetTextMuted();
-        g_pRenderText->RenderText(iCollectX, iButtonY + 10, L"אין פרסים לאיסוף", BUTTON_WIDTH, 0, RT3_SORT_CENTER);
+        g_pRenderText->RenderText(iCollectX, iButtonY + 10, I18N::Game::NoRewardsToClaim, BUTTON_WIDTH, 0, RT3_SORT_CENTER);
     }
 
     // Buy-pro button - left.
@@ -961,7 +983,7 @@ void SEASON3B::CMuPassWindow::RenderBottomButtons()
     {
         g_pRenderText->SetFont(g_hFontBold);
         SetTextPurple();
-        g_pRenderText->RenderText(iProX, iButtonY + 10, L"מסלול פרו פעיל ⭐", BUTTON_WIDTH, 0, RT3_SORT_CENTER);
+        g_pRenderText->RenderText(iProX, iButtonY + 10, I18N::Game::ProTrackActive, BUTTON_WIDTH, 0, RT3_SORT_CENTER);
     }
     else
     {
@@ -971,11 +993,11 @@ void SEASON3B::CMuPassWindow::RenderBottomButtons()
         SetTextPurple();
         if (IsProConfirmPending())
         {
-            swprintf_s(szText, L"לחץ שוב לאישור · %d קרדיטים", state.iProPriceCredits);
+            swprintf_s(szText, I18N::Game::ClickAgainToConfirmDCredits, state.iProPriceCredits);
         }
         else
         {
-            swprintf_s(szText, L"קנה פרו · %d קרדיטים", state.iProPriceCredits);
+            swprintf_s(szText, I18N::Game::BuyProDCredits, state.iProPriceCredits);
         }
 
         g_pRenderText->RenderText(iProX, iButtonY + 10, szText, BUTTON_WIDTH, 0, RT3_SORT_CENTER);
@@ -998,26 +1020,26 @@ void SEASON3B::CMuPassWindow::RenderInfoOverlay()
 
     g_pRenderText->SetFont(g_hFontBold);
     SetTextGold();
-    g_pRenderText->RenderText(iPanelX + 10, iPanelY + 10, L"מה זה MU Pass?", iPanelWidth - 20, 0, RT3_SORT_RIGHT);
+    g_pRenderText->RenderText(iPanelX + 10, iPanelY + 10, I18N::Game::WhatIsMUPass, iPanelWidth - 20, 0, SortLeading());
 
     g_pRenderText->SetFont(g_hFont);
     SetTextIvory();
     const wchar_t* apszLines[] =
     {
-        L"MU Pass הוא מסלול התקדמות עונתי.",
-        L"משלימים משימות יומיות, צוברים נקודות גובלין ועולים דרגות.",
-        L"כל דרגה פותחת פרס — אוספים אותו בלחיצת כפתור.",
-        L"משימות שלא הושלמו נצברות ליום הבא (עד 10 פתוחות).",
-        L"ההתקדמות משותפת לכל הדמויות בחשבון שלך.",
+        I18N::Game::MUPassIsASeasonalProgressionTrack,
+        I18N::Game::CompleteDailyMissionsCollectGoblinPointsAndGainLevels,
+        I18N::Game::EveryLevelUnlocksARewardCollectItWithOneClick,
+        I18N::Game::MissionsYouDidNotFinishCarryOverToTheNextDayUpTo10Open,
+        I18N::Game::ProgressIsSharedByEveryCharacterOnYourAccount,
     };
     int iLineY = iPanelY + 34;
     for (const wchar_t* pszLine : apszLines)
     {
-        g_pRenderText->RenderText(iPanelX + 10, iLineY, pszLine, iPanelWidth - 20, 0, RT3_SORT_RIGHT);
+        g_pRenderText->RenderText(iPanelX + 10, iLineY, pszLine, iPanelWidth - 20, 0, SortLeading());
         iLineY += 18;
     }
 
     SetTextPurple();
-    swprintf_s(szText, L"מסלול פרו: %d משימות נוספות ביום ופרסים משודרגים — %d קרדיטים.", 3, state.iProPriceCredits);
-    g_pRenderText->RenderText(iPanelX + 10, iLineY + 4, szText, iPanelWidth - 20, 0, RT3_SORT_RIGHT);
+    swprintf_s(szText, I18N::Game::ProTrackDExtraMissionsADayAndUpgradedRewardsDCredits, 3, state.iProPriceCredits);
+    g_pRenderText->RenderText(iPanelX + 10, iLineY + 4, szText, iPanelWidth - 20, 0, SortLeading());
 }

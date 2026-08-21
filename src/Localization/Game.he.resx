@@ -2740,4 +2740,40 @@
   <data name="You have reached the maximum level." xml:space="preserve"><value>הגעת לרמה המקסימלית.</value></data>
   <data name="You have reached the maximum master level." xml:space="preserve"><value>הגעת לרמת המאסטר המקסימלית.</value></data>
   <data name="Kill stronger monsters to gain master experience." xml:space="preserve"><value>צריך להרוג מפלצות חזקות יותר כדי לצבור ניסיון מאסטר.</value></data>
+  <data name="Ends in %d days" xml:space="preserve"><value>מסתיימת בעוד %d ימים</value></data>
+  <data name="What is MU Pass?" xml:space="preserve"><value>מה זה MU Pass?</value></data>
+  <data name="Level %d of %d" xml:space="preserve"><value>דרגה %d מתוך %d</value></data>
+  <data name="Goblin Points: %d / %d" xml:space="preserve"><value>נקודות גובלין: %d / %d</value></data>
+  <data name="Goblin Points: %d - max level!" xml:space="preserve"><value>נקודות גובלין: %d — דרגה מקסימלית!</value></data>
+  <data name="Levels 1-10: 1,000 pts  |  Levels 10-20: 1,500 pts  |  Levels 20-30: 2,000 pts" xml:space="preserve"><value>דרגות 1–10: ‏1,000 נק'  |  דרגות 10–20: ‏1,500 נק'  |  דרגות 20–30: ‏2,000 נק'</value></data>
+  <data name="Daily missions - %d/%d" xml:space="preserve"><value>משימות יומיות · %d/%d</value></data>
+  <data name="New ones in %ls" xml:space="preserve"><value>חדשות בעוד %ls</value></data>
+  <data name="Bonus +%d for every mission - claimed!" xml:space="preserve"><value>בונוס +%d על כל המשימות — התקבל!</value></data>
+  <data name="Finish all %d: bonus +%d pts" xml:space="preserve"><value>השלם את כל ה-%d: בונוס +%d נק'</value></data>
+  <data name="%d-%d of %d - scroll with the mouse wheel" xml:space="preserve"><value>%d-%d מתוך %d · גלול בגלגלת העכבר</value></data>
+  <data name="Pro missions" xml:space="preserve"><value>משימות פרו</value></data>
+  <data name="Pro missions - locked" xml:space="preserve"><value>משימות פרו · נעולות</value></data>
+  <data name="Loading missions..." xml:space="preserve"><value>טוען משימות…</value></data>
+  <data name="Reward track" xml:space="preserve"><value>מסלול הפרסים</value></data>
+  <data name="Loading rewards..." xml:space="preserve"><value>טוען פרסים…</value></data>
+  <data name="Free" xml:space="preserve"><value>חינם</value></data>
+  <data name="Pro" xml:space="preserve"><value>פרו</value></data>
+  <data name="Claim reward - level %d" xml:space="preserve"><value>אסוף פרס — דרגה %d</value></data>
+  <data name="No rewards to claim" xml:space="preserve"><value>אין פרסים לאיסוף</value></data>
+  <data name="Pro track active" xml:space="preserve"><value>מסלול פרו פעיל</value></data>
+  <data name="Click again to confirm - %d credits" xml:space="preserve"><value>לחץ שוב לאישור · %d קרדיטים</value></data>
+  <data name="Buy Pro - %d credits" xml:space="preserve"><value>קנה פרו · %d קרדיטים</value></data>
+  <data name="MU Pass is a seasonal progression track." xml:space="preserve"><value>MU Pass הוא מסלול התקדמות עונתי.</value></data>
+  <data name="Complete daily missions, collect Goblin Points and gain levels." xml:space="preserve"><value>משלימים משימות יומיות, צוברים נקודות גובלין ועולים דרגות.</value></data>
+  <data name="Every level unlocks a reward - collect it with one click." xml:space="preserve"><value>כל דרגה פותחת פרס — אוספים אותו בלחיצת כפתור.</value></data>
+  <data name="Missions you did not finish carry over to the next day (up to 10 open)." xml:space="preserve"><value>משימות שלא הושלמו נצברות ליום הבא (עד 10 פתוחות).</value></data>
+  <data name="Progress is shared by every character on your account." xml:space="preserve"><value>ההתקדמות משותפת לכל הדמויות בחשבון שלך.</value></data>
+  <data name="Pro track: %d extra missions a day and upgraded rewards - %d credits." xml:space="preserve"><value>מסלול פרו: %d משימות נוספות ביום ופרסים משודרגים — %d קרדיטים.</value></data>
+  <data name="A debugger is attached to the game" xml:space="preserve"><value>מנפה שגיאות מחובר למשחק</value></data>
+  <data name="An external debugger is attached to the game" xml:space="preserve"><value>מנפה שגיאות חיצוני מחובר למשחק</value></data>
+  <data name="Programs running: " xml:space="preserve"><value>תוכנות פתוחות: </value></data>
+  <data name="Code loaded into the game from a temporary folder: " xml:space="preserve"><value>קוד שנטען למשחק מתיקייה זמנית: </value></data>
+  <data name="System environment" xml:space="preserve"><value>סביבת המערכת</value></data>
+  <data name="Running programs" xml:space="preserve"><value>תוכנות פעילות</value></data>
+  <data name="Game integrity" xml:space="preserve"><value>תקינות המשחק</value></data>
 </root>

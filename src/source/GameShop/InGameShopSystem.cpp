@@ -1,12 +1,14 @@
-// InGameShopSystem.cpp: implementation of the InGameShopSystem class.
+﻿// InGameShopSystem.cpp: implementation of the InGameShopSystem class.
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
 #include "I18N/All.h"
 #ifdef KJH_ADD_INGAMESHOP_UI_SYSTEM
 #include "Core/Platform/WinIni.h"   // GetPrivateProfile*W off Windows
-#ifndef _WIN32
 #include <cstdlib>                  // mbstowcs
+#include <cwchar>                   // wcslen, wcsncat
+#include <iterator>                 // std::size
+#ifndef _WIN32
 #include "Core/Platform/PathResolve.h"   // MuExecutableDir
 #endif
 #include "InGameShopSystem.h"
@@ -29,6 +31,36 @@ namespace
         wchar_t ScriptPath[128];
         wchar_t BannerPath[128];
     };
+
+    // Appends "<separator><locale>" to a path, e.g. "/shop" -> "/shop/en".
+    // Bounded: a path already close to the end of the buffer is left untouched
+    // rather than truncated into a URL that would 404 with no clue why.
+    template <size_t N>
+    void AppendLocaleSegment(wchar_t (&path)[N], wchar_t separator)
+    {
+        const char* locale = I18N::GetCurrentLocale();
+        if (locale == nullptr || *locale == '\0')
+        {
+            return;
+        }
+
+        wchar_t wide[16] = { 0 };
+        const size_t converted = std::mbstowcs(wide, locale, std::size(wide) - 1);
+        if (converted == static_cast<size_t>(-1) || converted == 0)
+        {
+            return;
+        }
+
+        const size_t used = wcslen(path);
+        if (used + 1 + converted + 1 >= N)
+        {
+            return;
+        }
+
+        path[used] = separator;
+        path[used + 1] = L'\0';
+        wcsncat(path, wide, N - used - 2);
+    }
 
     XShopSource ReadXShopSource()
     {
@@ -179,12 +211,21 @@ bool CInGameShopSystem::ScriptDownload()
     ::GetCurrentDirectory(255, m_szScriptLocalPath);
 
     mu_swprintf(m_szScriptLocalPath, L"%ls%ls", m_szScriptLocalPath, L"\\data\\InGameShopScript");
+    AppendLocaleSegment(m_szScriptLocalPath, L'\\');
 
     // Download from our own server (admin panel catalog endpoint) instead of the
     // long-dead image.webzen.com. Host/port/path come from shop.ini.
     const XShopSource source = ReadXShopSource();
     CopyBounded(m_szScriptIPAddress, source.Host);
     CopyBounded(m_szScriptRemotePath, source.ScriptPath);
+
+    // The catalog is a plain, anonymous text file - there is no account on that
+    // request, so the server cannot know which language to send. The locale goes
+    // into the URL as its own path segment ahead of the version folder:
+    //     /shop/en/001.2026.001/IBSCategory.txt
+    // The local cache directory gets the same segment, otherwise switching
+    // language would keep serving the catalog downloaded for the previous one.
+    AppendLocaleSegment(m_szScriptRemotePath, L'/');
 
     m_ShopManager.SetListManagerInfo(HTTP, m_szScriptIPAddress,
         source.Port,

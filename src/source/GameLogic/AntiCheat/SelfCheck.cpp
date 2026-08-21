@@ -10,6 +10,9 @@
 #endif
 
 #include <algorithm>
+#include <string>
+
+#include "I18N/All.h"
 
 // Defined in App/Platform/Windows/Winmain.cpp, the same way WSclient.cpp reaches it.
 BOOL Util_CheckOption(std::wstring lpszCommandLine, wchar_t cOption, std::wstring& lpszString);
@@ -73,14 +76,14 @@ namespace GameLogic::AntiCheat
         {
             if (::IsDebuggerPresent())
             {
-                SetResult(check, CheckStatus::Suspicious, L"מנפה שגיאות מחובר למשחק");
+                SetResult(check, CheckStatus::Suspicious, I18N::Game::ADebuggerIsAttachedToTheGame);
                 return;
             }
 
             BOOL bRemoteDebugger = FALSE;
             if (::CheckRemoteDebuggerPresent(::GetCurrentProcess(), &bRemoteDebugger) && bRemoteDebugger)
             {
-                SetResult(check, CheckStatus::Suspicious, L"מנפה שגיאות חיצוני מחובר למשחק");
+                SetResult(check, CheckStatus::Suspicious, I18N::Game::AnExternalDebuggerIsAttachedToTheGame);
                 return;
             }
 
@@ -131,7 +134,7 @@ namespace GameLogic::AntiCheat
                 return;
             }
 
-            SetResult(check, CheckStatus::Suspicious, L"תוכנות פתוחות: " + strFound);
+            SetResult(check, CheckStatus::Suspicious, std::wstring(I18N::Game::ProgramsRunning) + strFound);
         }
 
         bool IsPathUnder(const std::wstring& strPath, const std::wstring& strFolder)
@@ -207,7 +210,7 @@ namespace GameLogic::AntiCheat
                 return;
             }
 
-            SetResult(check, CheckStatus::Suspicious, L"קוד שנטען למשחק מתיקייה זמנית: " + strFound);
+            SetResult(check, CheckStatus::Suspicious, std::wstring(I18N::Game::CodeLoadedIntoTheGameFromATemporaryFolder) + strFound);
         }
 #endif
 
@@ -230,9 +233,9 @@ namespace GameLogic::AntiCheat
     {
         Report& report = MutableReport();
         report.Checks.clear();
-        report.Checks.push_back({ CheckId::Environment, CheckStatus::Pending, L"סביבת המערכת", L"" });
-        report.Checks.push_back({ CheckId::Processes, CheckStatus::Pending, L"תוכנות פעילות", L"" });
-        report.Checks.push_back({ CheckId::Integrity, CheckStatus::Pending, L"תקינות המשחק", L"" });
+        report.Checks.push_back({ CheckId::Environment, CheckStatus::Pending, I18N::Game::SystemEnvironment, L"" });
+        report.Checks.push_back({ CheckId::Processes, CheckStatus::Pending, I18N::Game::RunningPrograms, L"" });
+        report.Checks.push_back({ CheckId::Integrity, CheckStatus::Pending, I18N::Game::GameIntegrity, L"" });
 
         ReadLaunchToken(report);
 

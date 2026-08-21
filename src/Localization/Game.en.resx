@@ -12985,4 +12985,112 @@
   <data name="Kill stronger monsters to gain master experience." xml:space="preserve">
     <value>Kill stronger monsters to gain master experience.</value>
   </data>
+  <data name="Ends in %d days" xml:space="preserve">
+    <value>Ends in %d days</value>
+  </data>
+  <data name="What is MU Pass?" xml:space="preserve">
+    <value>What is MU Pass?</value>
+  </data>
+  <data name="Level %d of %d" xml:space="preserve">
+    <value>Level %d of %d</value>
+  </data>
+  <data name="Goblin Points: %d / %d" xml:space="preserve">
+    <value>Goblin Points: %d / %d</value>
+  </data>
+  <data name="Goblin Points: %d - max level!" xml:space="preserve">
+    <value>Goblin Points: %d - max level!</value>
+  </data>
+  <data name="Levels 1-10: 1,000 pts  |  Levels 10-20: 1,500 pts  |  Levels 20-30: 2,000 pts" xml:space="preserve">
+    <value>Levels 1-10: 1,000 pts  |  Levels 10-20: 1,500 pts  |  Levels 20-30: 2,000 pts</value>
+  </data>
+  <data name="Daily missions - %d/%d" xml:space="preserve">
+    <value>Daily missions - %d/%d</value>
+  </data>
+  <data name="New ones in %ls" xml:space="preserve">
+    <value>New ones in %ls</value>
+  </data>
+  <data name="Bonus +%d for every mission - claimed!" xml:space="preserve">
+    <value>Bonus +%d for every mission - claimed!</value>
+  </data>
+  <data name="Finish all %d: bonus +%d pts" xml:space="preserve">
+    <value>Finish all %d: bonus +%d pts</value>
+  </data>
+  <data name="%d-%d of %d - scroll with the mouse wheel" xml:space="preserve">
+    <value>%d-%d of %d - scroll with the mouse wheel</value>
+  </data>
+  <data name="Pro missions" xml:space="preserve">
+    <value>Pro missions</value>
+  </data>
+  <data name="Pro missions - locked" xml:space="preserve">
+    <value>Pro missions - locked</value>
+  </data>
+  <data name="Loading missions..." xml:space="preserve">
+    <value>Loading missions...</value>
+  </data>
+  <data name="Reward track" xml:space="preserve">
+    <value>Reward track</value>
+  </data>
+  <data name="Loading rewards..." xml:space="preserve">
+    <value>Loading rewards...</value>
+  </data>
+  <data name="Free" xml:space="preserve">
+    <value>Free</value>
+  </data>
+  <data name="Pro" xml:space="preserve">
+    <value>Pro</value>
+  </data>
+  <data name="Claim reward - level %d" xml:space="preserve">
+    <value>Claim reward - level %d</value>
+  </data>
+  <data name="No rewards to claim" xml:space="preserve">
+    <value>No rewards to claim</value>
+  </data>
+  <data name="Pro track active" xml:space="preserve">
+    <value>Pro track active</value>
+  </data>
+  <data name="Click again to confirm - %d credits" xml:space="preserve">
+    <value>Click again to confirm - %d credits</value>
+  </data>
+  <data name="Buy Pro - %d credits" xml:space="preserve">
+    <value>Buy Pro - %d credits</value>
+  </data>
+  <data name="MU Pass is a seasonal progression track." xml:space="preserve">
+    <value>MU Pass is a seasonal progression track.</value>
+  </data>
+  <data name="Complete daily missions, collect Goblin Points and gain levels." xml:space="preserve">
+    <value>Complete daily missions, collect Goblin Points and gain levels.</value>
+  </data>
+  <data name="Every level unlocks a reward - collect it with one click." xml:space="preserve">
+    <value>Every level unlocks a reward - collect it with one click.</value>
+  </data>
+  <data name="Missions you did not finish carry over to the next day (up to 10 open)." xml:space="preserve">
+    <value>Missions you did not finish carry over to the next day (up to 10 open).</value>
+  </data>
+  <data name="Progress is shared by every character on your account." xml:space="preserve">
+    <value>Progress is shared by every character on your account.</value>
+  </data>
+  <data name="Pro track: %d extra missions a day and upgraded rewards - %d credits." xml:space="preserve">
+    <value>Pro track: %d extra missions a day and upgraded rewards - %d credits.</value>
+  </data>
+  <data name="A debugger is attached to the game" xml:space="preserve">
+    <value>A debugger is attached to the game</value>
+  </data>
+  <data name="An external debugger is attached to the game" xml:space="preserve">
+    <value>An external debugger is attached to the game</value>
+  </data>
+  <data name="Programs running: " xml:space="preserve">
+    <value>Programs running: </value>
+  </data>
+  <data name="Code loaded into the game from a temporary folder: " xml:space="preserve">
+    <value>Code loaded into the game from a temporary folder: </value>
+  </data>
+  <data name="System environment" xml:space="preserve">
+    <value>System environment</value>
+  </data>
+  <data name="Running programs" xml:space="preserve">
+    <value>Running programs</value>
+  </data>
+  <data name="Game integrity" xml:space="preserve">
+    <value>Game integrity</value>
+  </data>
 </root>
