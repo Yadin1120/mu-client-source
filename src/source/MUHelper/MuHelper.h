@@ -55,6 +55,7 @@ namespace MUHelper
 		int RepairEquipments();
 		int Regroup();
 		int ReturnToAnchor();
+		bool BreakStallIfStuck();
 		int AttackInPlace();
 		bool IsWithinLeash(POINT pos);
 		bool IsWithinHuntingArea(POINT pos);
@@ -101,6 +102,9 @@ namespace MUHelper
 		int m_iLoopCounter;
 		int m_iSecondsElapsed;
 		int m_iSecondsAway;
+		int m_iStallTicks;
+		int m_iSupportBlockTicks;
+		POINT m_posLastSeen;
 		bool m_bTimerActivatedBuffOngoing;
 		bool m_bPetActivated;
 		int m_iTotalCost;

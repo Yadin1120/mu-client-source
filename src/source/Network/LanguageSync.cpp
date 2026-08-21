@@ -27,13 +27,17 @@ void SyncLanguageWithServer()
     GameConfig& config = GameConfig::GetInstance();
     const std::wstring code = ServerCodeForLocale(config.GetUILocale());
 
-    // Nothing new to announce. This is the common case for the whole Hebrew
-    // player base (the default marker is "he"), so nobody pays for this
-    // feature with a chat message they never asked for.
-    if (config.GetLanguageSynced() == code)
-    {
-        return;
-    }
+    // The marker used to short-circuit here, which made the whole feature
+    // fire-and-forget: the client wrote "en" locally the moment it sent the
+    // command and never spoke again, so a message the server did not persist
+    // was lost forever. Measured in production on 21/08/2026 - every account
+    // in the database was still "he" while clients believed they had synced,
+    // which is why an English client showed a Hebrew game.
+    //
+    // The command is now sent on every world entry. It costs one small chat
+    // packet per login, it is never broadcast to other players, and the
+    // server stays silent when nothing actually changed - so a Hebrew player
+    // still never sees a message they did not ask for.
 
     // Not in game yet (login/character screens) - the world-entry call will
     // pick it up. The marker is intentionally NOT updated here, so the
@@ -51,6 +55,12 @@ void SyncLanguageWithServer()
     const std::wstring message = L"/language " + code;
     SocketClient->ToGameServer()->SendPublicChatMessage(Hero->ID, message.c_str());
 
-    config.SetLanguageSynced(code);
-    config.Save();
+    // The marker is kept only so the config file still shows what was last
+    // announced; it no longer gates the send. Written only when it actually
+    // changes, so a normal login does not touch config.ini at all.
+    if (config.GetLanguageSynced() != code)
+    {
+        config.SetLanguageSynced(code);
+        config.Save();
+    }
 }

@@ -2737,4 +2737,7 @@
   <data name="Shift + right click = price in resets" xml:space="preserve"><value>Shift + ימנית = מחיר בריסטים</value></data>
   <data name="Want to sell for resets instead of zen?" xml:space="preserve"><value>למכור בריסטים במקום בזן?</value></data>
   <data name="Hold Shift when you right click" xml:space="preserve"><value>החזק Shift בלחיצה הימנית</value></data>
+  <data name="You have reached the maximum level." xml:space="preserve"><value>הגעת לרמה המקסימלית.</value></data>
+  <data name="You have reached the maximum master level." xml:space="preserve"><value>הגעת לרמת המאסטר המקסימלית.</value></data>
+  <data name="Kill stronger monsters to gain master experience." xml:space="preserve"><value>צריך להרוג מפלצות חזקות יותר כדי לצבור ניסיון מאסטר.</value></data>
 </root>

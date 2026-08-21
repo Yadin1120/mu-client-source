@@ -12976,4 +12976,13 @@
   <data name="Hold Shift when you right click" xml:space="preserve">
     <value>Hold Shift when you right click</value>
   </data>
+  <data name="You have reached the maximum level." xml:space="preserve">
+    <value>You have reached the maximum level.</value>
+  </data>
+  <data name="You have reached the maximum master level." xml:space="preserve">
+    <value>You have reached the maximum master level.</value>
+  </data>
+  <data name="Kill stronger monsters to gain master experience." xml:space="preserve">
+    <value>Kill stronger monsters to gain master experience.</value>
+  </data>
 </root>

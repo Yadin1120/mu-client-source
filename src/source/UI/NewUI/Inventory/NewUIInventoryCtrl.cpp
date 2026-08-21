@@ -1495,6 +1495,14 @@ void SEASON3B::CNewUIInventoryCtrl::RenderNumberOfItem()
             glColor3f(1.f, 0.9f, 0.7f);
             SEASON3B::RenderNumber(x + width - 6, y + 1, pItem->Durability);
         }
+        // Lucky Coin: the client always treated it as a stack (AreItemsStackable allows up to
+        // 255, and the tooltip prints the number of items), but the count was missing from the
+        // icon. Without it a full stack of coins looks exactly like a single coin.
+        else if (pItem->Type == ITEM_POTION + 100 && pItem->Durability > 1)
+        {
+            glColor3f(1.f, 0.9f, 0.7f);
+            SEASON3B::RenderNumber(x + width - 6, y + 1, pItem->Durability);
+        }
         else if (COMGEM::isCompiledGem(pItem))
         {
             const int Level = pItem->Level;

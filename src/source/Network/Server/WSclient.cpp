@@ -5820,6 +5820,33 @@ BOOL ReceiveDieExp(const BYTE* ReceiveBuffer, BOOL bEncrypted)
     return (TRUE);
 }
 
+
+// שלוש ההודעות האלה נשלחות בכל הריגה, ולכן ברגע שהדמות מגיעה לתקרה
+// (רמה מקסימלית, מאסטר מקסימלי, או ציד במפה שהמפלצות בה חלשות מדי
+// לניסיון מאסטר) הן חוזרות על עצמן בלי סוף. עם העוזר האוטומטי דולק זה
+// הרג את החלון: חמש הודעות זהות בשש שניות, ובתוכן נבלעו לגמרי הודעות
+// המערכת האמיתיות. המידע נכון ושווה להיאמר — פעם בדקה, לא בכל מפלצת.
+static bool ShouldAnnounceExperienceNotice(int experienceType)
+{
+    constexpr ULONGLONG NOTICE_INTERVAL_MS = 60 * 1000;
+
+    static int s_iLastType = -1;
+    static ULONGLONG s_ulLastTick = 0;
+
+    const ULONGLONG ulNow = GetTickCount64();
+
+    // סוג חדש נאמר מיד — מעבר מ"מפלצות חלשות מדי" ל"הגעת לרמה המקסימלית"
+    // הוא מידע חדש לשחקן, ולא חזרה על מה שכבר נאמר.
+    if (experienceType != s_iLastType || ulNow - s_ulLastTick >= NOTICE_INTERVAL_MS)
+    {
+        s_iLastType = experienceType;
+        s_ulLastTick = ulNow;
+        return true;
+    }
+
+    return false;
+}
+
 BOOL ReceiveDieExpLarge(const BYTE* ReceiveBuffer, BOOL bEncrypted)
 {
     auto Data = (LPPRECEIVE_EXP_EXTENDED)ReceiveBuffer;
@@ -5858,13 +5885,22 @@ BOOL ReceiveDieExpLarge(const BYTE* ReceiveBuffer, BOOL bEncrypted)
     switch(experienceType)
     {
     case eExperienceType_MaxLevelReached:
-        g_pSystemLogBox->AddText(L"הגעת לרמה המקסימלית.", SEASON3B::TYPE_SYSTEM_MESSAGE);
+        if (ShouldAnnounceExperienceNotice(experienceType))
+        {
+            g_pSystemLogBox->AddText(I18N::Game::YouHaveReachedTheMaximumLevel, SEASON3B::TYPE_SYSTEM_MESSAGE);
+        }
         return TRUE;
     case eExperienceType_MaxMasterLevelReached:
-        g_pSystemLogBox->AddText(L"הגעת לרמת המאסטר המקסימלית.", SEASON3B::TYPE_SYSTEM_MESSAGE);
+        if (ShouldAnnounceExperienceNotice(experienceType))
+        {
+            g_pSystemLogBox->AddText(I18N::Game::YouHaveReachedTheMaximumMasterLevel, SEASON3B::TYPE_SYSTEM_MESSAGE);
+        }
         return TRUE;
     case eExperienceType_MonsterLevelTooLowForMasterExperience:
-        g_pSystemLogBox->AddText(L"צריך להרוג מפלצות חזקות יותר כדי לצבור ניסיון מאסטר.", SEASON3B::TYPE_SYSTEM_MESSAGE);
+        if (ShouldAnnounceExperienceNotice(experienceType))
+        {
+            g_pSystemLogBox->AddText(I18N::Game::KillStrongerMonstersToGainMasterExperience, SEASON3B::TYPE_SYSTEM_MESSAGE);
+        }
         return TRUE;
     }
 

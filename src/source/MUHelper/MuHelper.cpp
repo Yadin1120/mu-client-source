@@ -39,6 +39,14 @@ constexpr int RESEED_INTERVAL_TICKS = 2 * TICKS_PER_SECOND;
 // מרחק שנחשב "בעוגן". משבצת אחת, כמו במונה ההתרחקות של WorkLoop.
 constexpr int ANCHOR_TOLERANCE = 1;
 
+// שומר התקיעות: כמה פעימות מותר להיות "בתנועה" בלי שהמיקום בפועל
+// משתנה. 3 שניות הן הרבה מעבר למסלול של שני צעדים.
+constexpr int STALL_LIMIT_TICKS = 3 * TICKS_PER_SECOND;
+
+// כמה זמן מותר לשלב תמיכה (באף/ריפוי) לעצור את הלולאה לפני שממשיכים
+// לתקוף בלעדיו. מעל זה מדובר בחסם קבוע ולא בהמתנה לנפנוף.
+constexpr int SUPPORT_BLOCK_LIMIT_TICKS = 2 * TICKS_PER_SECOND;
+
 SpinLock _targetsLock;
 SpinLock _itemsLock;
 
@@ -143,6 +151,10 @@ namespace MUHelper
         m_iSecondsElapsed = 0;
         m_iSecondsAway = 0;
 
+        m_iStallTicks = 0;
+        m_posLastSeen = m_posOriginal;
+        m_iSupportBlockTicks = 0;
+
         m_bTimerActivatedBuffOngoing = false;
         m_bPetActivated = false;
 
@@ -202,6 +214,8 @@ namespace MUHelper
             SeedTargetsFromViewport();
         }
 
+        BreakStallIfStuck();
+
         Work();
 
         if (++m_iLoopCounter >= TICKS_PER_SECOND)
@@ -230,14 +244,23 @@ namespace MUHelper
                 return;
             }
 
-            if (!Buff())
+            // 🔴 שלבי התמיכה עצרו את הלולאה לנצח. `Buff` ו-`Heal` מחזירים
+            // 0 בכל כישלון של הכישוף — ואין מאנה, כישוף בקירור או מטרה שלא
+            // ניתן להגיע אליה הם כישלון קבוע, לא המתנה. התוצאה: הדמות עומדת
+            // בלי לתקוף כלום, לפעמים עם חיים נמוכים ובלי מאנה לרפא, עד
+            // שנהרגת. עכשיו נותנים לשלב זמן קצוב לחסום — מספיק לנפנוף אחד
+            // להסתיים — ואחריו ממשיכים לתקוף בלעדיו. המונה מתאפס רק כששלב
+            // התמיכה מצליח שוב, כך שחוסר מאנה מתמשך לא חוזר לחנוק אותנו.
+            if (!Buff() || !RecoverHealth())
             {
-                return;
+                if (++m_iSupportBlockTicks < SUPPORT_BLOCK_LIMIT_TICKS)
+                {
+                    return;
+                }
             }
-
-            if (!RecoverHealth())
+            else
             {
-                return;
+                m_iSupportBlockTicks = 0;
             }
 
             // תקיפה לפני איסוף (20/08/2026). בסדר ההפוך, כל פעימה שבה הדמות
@@ -1290,6 +1313,53 @@ namespace MUHelper
         return SimulateSkill(iSkill, false, -1);
     }
 
+    // 🔴 שומר תקיעות. שלושה מקומות בעוזר ממתינים ל-`Hero->Movement`
+    // שיתנקה, ואף אחד מהם לא מוותר על זה לעולם: StepTowardTarget מחזיר 1
+    // ("בדרך") ומחזיק את המטרה, ReturnToAnchor מחזיר 0, והנפילה להתקפה
+    // הבסיסית מותנית ב-`!Hero->Movement`. אם פקודת תנועה לא מסתיימת בפועל
+    // — מסלול שנחסם, אי-התאמה מול השרת, או מפלצת שעומדת בדרך — הדמות
+    // נשארת עומדת לנצח עם מטרה נעולה. ו-Regroup לא מציל, כי הוא רץ רק
+    // כשאין מטרה. כאן המדידה היא תזוזה אמיתית על המפה, לא דגל.
+    bool CMuHelper::BreakStallIfStuck()
+    {
+        const POINT posHero = { Hero->PositionX, Hero->PositionY };
+
+        if (posHero.x != m_posLastSeen.x || posHero.y != m_posLastSeen.y)
+        {
+            m_posLastSeen = posHero;
+            m_iStallTicks = 0;
+            return false;
+        }
+
+        if (!Hero->Movement)
+        {
+            m_iStallTicks = 0;
+            return false;
+        }
+
+        if (++m_iStallTicks < STALL_LIMIT_TICKS)
+        {
+            return false;
+        }
+
+        // משחררים את התנועה התקועה ואת המטרה שגררה אליה, כדי שהפעימה
+        // הבאה תבחר מחדש — ואם אין מה לתקוף, תחזור לעוגן.
+        Hero->Path.Lock.lock();
+        Hero->Path.PathNum = 0;
+        Hero->Path.CurrentPath = 0;
+        Hero->Path.CurrentPathFloat = 0;
+        Hero->Path.Lock.unlock();
+
+        Hero->Movement = 0;
+        SetPlayerStop(Hero);
+        m_iCurrentTarget = -1;
+        m_iComboState = 0;
+        m_iStallTicks = 0;
+
+        g_ConsoleDebug->Write(MCD_NORMAL, L"[MU Helper] Movement stalled. Releasing target.");
+        return true;
+    }
+
     int CMuHelper::ReturnToAnchor()
     {
         // "רק לתקוף": אם לא זזנו, אין לאן לחזור.
@@ -1427,6 +1497,18 @@ namespace MUHelper
                 // "רק לתקוף": לא הולכים גם אל שלל. פריט שנפל מחוץ להישג יד
                 // משוחרר כדי שלא יחסום את התור לפריט שכן צמוד לדמות.
                 if (m_config.bStayInPlace)
+                {
+                    DeleteItem(m_iCurrentItem);
+                    return 1;
+                }
+
+                // 🔴 ההליכה אל השלל הייתה הדבר היחיד בעוזר שלא כפוף
+                // לרצועה. הבחירה כן מסוננת, אבל לפי אזור הציד (רצועה + טווח),
+                // ולכן הדמות הלכה עד קצהו — ומשם ערימה חדשה נכנסה לטווח
+                // האיסוף שלה ומשכה אותה הלאה. עם דרופ של 20% הרצפה מלאה תמיד,
+                // וזה נראה כמו דמות שמסתובבת סתם במפה. פריט מעבר לרצועה
+                // משוחרר במקום לגרור אליו.
+                if (!IsWithinLeash({ TargetX, TargetY }))
                 {
                     DeleteItem(m_iCurrentItem);
                     return 1;
