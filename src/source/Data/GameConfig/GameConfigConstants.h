@@ -36,6 +36,9 @@ namespace CfgKeys
     // UI
     inline constexpr wchar_t CfgKeyUILocale[] = L"Locale";
     inline constexpr wchar_t CfgKeyFont[]     = L"Font";
+    // The server language this client last announced with /language (see
+    // LanguageSync.cpp). Not the locale itself - the dedup marker.
+    inline constexpr wchar_t CfgKeyLanguageSynced[] = L"LanguageSynced";
 
     // Camera
     inline constexpr wchar_t CfgKeyZoom[] = L"Zoom";
@@ -71,6 +74,10 @@ namespace CfgDefaults
 
     // I18N locale code; "en" is the default the resx generator falls back to.
     inline constexpr wchar_t CfgDefaultUILocale[] = L"en";
+
+    // Default "he": the whole existing player base is Hebrew and the server
+    // default is Hebrew, so nobody sends anything until they actually switch.
+    inline constexpr wchar_t CfgDefaultLanguageSynced[] = L"he";
 
     // UI font family name. Empty = each platform's built-in default (Tahoma on
     // Windows, fontconfig "sans-serif" on Linux), so the look is unchanged until

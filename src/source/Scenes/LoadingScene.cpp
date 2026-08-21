@@ -3,6 +3,7 @@
 //*****************************************************************************
 
 #include "stdafx.h"
+#include "Network/LanguageSync.h"
 
 #include "LoadingScene.h"
 
@@ -116,6 +117,12 @@ void LoadingScene(HDC hDC)
     SAFE_DELETE(rUIMng.m_pLoadingScene);
 
     SceneFlag = MAIN_SCENE;
+
+    // The world is live and the connection is up - announce the client's
+    // language to the server if it changed (LanguageSync dedups, so this is
+    // a no-op for everyone who did not just switch).
+    SyncLanguageWithServer();
+
     for (int i = 0; i < 4; ++i)
         ::DeleteBitmap(BITMAP_TITLE + i);
 

@@ -72,6 +72,7 @@ void GameConfig::Load()
 
     m_uiLocale = ReadString(CfgSectionUI, CfgKeyUILocale, CfgDefaultUILocale);
     m_fontSelection = ReadString(CfgSectionUI, CfgKeyFont, CfgDefaultFont);
+    m_languageSynced = ReadString(CfgSectionUI, CfgKeyLanguageSynced, CfgDefaultLanguageSynced);
 
     m_zoom = ReadInt(CfgSectionCamera, CfgKeyZoom, CfgDefaultZoom);
 
@@ -112,6 +113,7 @@ void GameConfig::Save()
 
     WriteString(CfgSectionUI, CfgKeyUILocale, m_uiLocale);
     WriteString(CfgSectionUI, CfgKeyFont, m_fontSelection);
+    WriteString(CfgSectionUI, CfgKeyLanguageSynced, m_languageSynced);
 
     WriteInt(CfgSectionCamera, CfgKeyZoom, m_zoom);
 }
@@ -163,6 +165,11 @@ void GameConfig::SetLanguageSelection(const std::wstring& lang)
 void GameConfig::SetUILocale(const std::wstring& locale)
 {
     m_uiLocale = locale;
+}
+
+void GameConfig::SetLanguageSynced(const std::wstring& code)
+{
+    m_languageSynced = code;
 }
 
 void GameConfig::SetFontSelection(const std::wstring& font)

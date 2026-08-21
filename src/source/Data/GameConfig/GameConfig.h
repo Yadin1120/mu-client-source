@@ -64,6 +64,12 @@ public:
     std::wstring GetUILocale() const { return m_uiLocale; }
     void SetUILocale(const std::wstring& locale);
 
+    // The server language ("he"/"en") this client last announced with the
+    // automatic /language message - the dedup marker of LanguageSync.cpp,
+    // NOT the UI locale. Kept in config.ini so it survives restarts.
+    std::wstring GetLanguageSynced() const { return m_languageSynced; }
+    void SetLanguageSynced(const std::wstring& code);
+
     // UI font family name (GDI face name). Empty = platform default.
     std::wstring GetFontSelection() const { return m_fontSelection; }
     void SetFontSelection(const std::wstring& font);
@@ -103,6 +109,7 @@ private:
     int m_serverPort;
 
     std::wstring m_uiLocale;
+    std::wstring m_languageSynced;
     std::wstring m_fontSelection;
 
     int m_zoom;

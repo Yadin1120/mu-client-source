@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cstring>
 #include "I18N/All.h"
+#include "Network/LanguageSync.h"
 
 extern int m_MusicOnOff;
 extern int m_SoundOnOff;
@@ -1051,6 +1052,11 @@ void SEASON3B::CNewUIOptionWindow::ApplyLanguage()
     I18N::SetLocale(code);
     GameConfig::GetInstance().SetUILocale(wide);
     GameConfig::GetInstance().Save();
+
+    // Tell the server too, so its messages switch together with the UI -
+    // one switch, both halves. Outside the game world this is a no-op and
+    // the world-entry sync picks the change up instead.
+    SyncLanguageWithServer();
 }
 
 int SEASON3B::CNewUIOptionWindow::FindCurrentFontIndex()
