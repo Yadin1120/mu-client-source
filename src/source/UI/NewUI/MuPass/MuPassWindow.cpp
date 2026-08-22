@@ -67,6 +67,14 @@ namespace
     {
         glColor4f(col[0], col[1], col[2], alpha);
         RenderColor(static_cast<float>(x), static_cast<float>(y), static_cast<float>(w), static_cast<float>(h));
+
+        // 🔴 The fill also leaves its own colour current, and the font bitmap is drawn
+        // modulated by it - so every line of text right after a fill came out darkened
+        // towards the panel colour. Found while building the jewel bank window, where
+        // the same helper made whole rows look empty. The muted grey below was lifted
+        // once already to compensate for this; the real fix is here.
+        glColor4f(1.f, 1.f, 1.f, 1.f);
+
         // RenderColor disables texturing (via DisableTexture) and doesn't restore it.
         // EnableAlphaTest turns GL_TEXTURE_2D back on AND keeps the engine's texture-
         // state flag in sync (EndRenderColor would desync it, making the next fill

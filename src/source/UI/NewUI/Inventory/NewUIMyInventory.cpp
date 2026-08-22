@@ -2,6 +2,7 @@
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
+#include "Network/JewelBank/JewelBankProtocol.h"
 #include "UI/NewUI/Inventory/NewUIMyInventory.h"
 #include "UI/NewUI/NewUISystem.h"
 #include "I18N/All.h"
@@ -454,8 +455,36 @@ void CNewUIMyInventory::SetRepairMode(bool bRepair)
     }
 }
 
+bool CNewUIMyInventory::TryDepositJewelToBank()
+{
+    // Only while the bank window is open, so a plain right-click keeps its usual
+    // meaning everywhere else - and nobody deposits a jewel by accident.
+    if (!g_pNewUISystem->IsVisible(INTERFACE_JEWELBANK))
+        return false;
+
+    if (!IsRepeat(VK_CONTROL) || !IsPress(VK_RBUTTON))
+        return false;
+
+    if (m_pNewInventoryCtrl == nullptr || CNewUIInventoryCtrl::GetPickedItem() != nullptr)
+        return false;
+
+    const int iSlotIndex = m_pNewInventoryCtrl->GetIndexAtPt(MouseX, MouseY);
+    if (iSlotIndex == -1)
+        return false;
+
+    // The server decides whether the slot really holds a bankable jewel: the index
+    // alone is a client claim, and it answers with a fresh bank state either way.
+    ResetMouseRButton();
+    Network::JewelBank::SendDepositRequest(iSlotIndex);
+    PlayBuffer(SOUND_CLICK01);
+    return true;
+}
+
 bool CNewUIMyInventory::UpdateMouseEvent()
 {
+    if (TryDepositJewelToBank())
+        return false;
+
     if (m_pNewInventoryCtrl && !m_pNewInventoryCtrl->UpdateMouseEvent())
         return false;
 

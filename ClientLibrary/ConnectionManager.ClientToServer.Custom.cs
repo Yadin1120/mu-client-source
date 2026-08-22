@@ -198,4 +198,83 @@ public unsafe partial class ConnectionManager
             // Log exception
         }
     }
+
+    /// <summary>
+    /// Sends a JewelBankStatusRequest (0xD2, 0x30) - the jewel bank window asks for the balances.
+    /// Custom packet of this server, so it's written as raw bytes here.
+    /// </summary>
+    /// <param name="handle">The handle of the connection.</param>
+    [UnmanagedCallersOnly(EntryPoint = "SendJewelBankStatusRequest")]
+    public static void SendJewelBankStatusRequest(int handle)
+    {
+        SendMuPassSimpleRequest(handle, 0x30);
+    }
+
+    /// <summary>
+    /// Sends a JewelBankDepositRequest (0xD2, 0x31) for one inventory slot.
+    /// </summary>
+    /// <param name="handle">The handle of the connection.</param>
+    /// <param name="inventorySlot">The inventory slot of the jewel to deposit.</param>
+    [UnmanagedCallersOnly(EntryPoint = "SendJewelBankDepositRequest")]
+    public static void SendJewelBankDepositRequest(int handle, byte @inventorySlot)
+    {
+        if (!Connections.TryGetValue(handle, out var connection))
+        {
+            return;
+        }
+
+        try
+        {
+            connection.CreateAndSend(pipeWriter =>
+            {
+                const int length = 5;
+                var span = pipeWriter.GetSpan(length)[..length];
+                span[0] = 0xC1;
+                span[1] = length;
+                span[2] = 0xD2;
+                span[3] = 0x31;
+                span[4] = inventorySlot;
+                return length;
+            });
+        }
+        catch
+        {
+            // Log exception
+        }
+    }
+
+    /// <summary>
+    /// Sends a JewelBankWithdrawRequest (0xD2, 0x32).
+    /// </summary>
+    /// <param name="handle">The handle of the connection.</param>
+    /// <param name="jewelType">The number of the jewel mix.</param>
+    /// <param name="amount">The number of single jewels; 255 fills every free inventory slot.</param>
+    [UnmanagedCallersOnly(EntryPoint = "SendJewelBankWithdrawRequest")]
+    public static void SendJewelBankWithdrawRequest(int handle, byte @jewelType, byte @amount)
+    {
+        if (!Connections.TryGetValue(handle, out var connection))
+        {
+            return;
+        }
+
+        try
+        {
+            connection.CreateAndSend(pipeWriter =>
+            {
+                const int length = 6;
+                var span = pipeWriter.GetSpan(length)[..length];
+                span[0] = 0xC1;
+                span[1] = length;
+                span[2] = 0xD2;
+                span[3] = 0x32;
+                span[4] = jewelType;
+                span[5] = amount;
+                return length;
+            });
+        }
+        catch
+        {
+            // Log exception
+        }
+    }
 }

@@ -1,4 +1,4 @@
-#include "stdafx.h"
+﻿#include "stdafx.h"
 #include "UI/NewUI/NewUISystem.h"
 #include "UI/NewUI/Dialogs/NewUIMessageBox.h"
 
@@ -103,6 +103,7 @@ CNewUISystem::CNewUISystem()
     m_pNewInGameShop = nullptr;
 #endif //PBG_ADD_INGAMESHOP_UI_MAINFRAME
     m_pMuPassWindow = nullptr;
+    m_pJewelBankWindow = nullptr;
     m_pNewDoppelGangerWindow = nullptr;
     m_pNewDoppelGangerFrame = nullptr;
     m_pNewNPCDialogue = nullptr;
@@ -282,6 +283,11 @@ bool CNewUISystem::LoadMainSceneInterface()
     if (m_pMuPassWindow->Create(m_pNewUIMng, CMuPassWindow::WND_POS_X, CMuPassWindow::WND_POS_Y) == false)
         return false;
     g_pMuPassWindow = m_pMuPassWindow;
+
+    m_pJewelBankWindow = new CJewelBankWindow;
+    if (m_pJewelBankWindow->Create(m_pNewUIMng, CJewelBankWindow::WND_POS_X, CJewelBankWindow::WND_POS_Y) == false)
+        return false;
+    g_pJewelBankWindow = m_pJewelBankWindow;
 
     m_pNewPartyInfoWindow = new CNewUIPartyInfoWindow;
     if (m_pNewPartyInfoWindow->Create(m_pNewUIMng, PanelColumnX(1), 0) == false)
@@ -552,6 +558,8 @@ void CNewUISystem::UnloadMainSceneInterface()
     SAFE_DELETE(m_pNewTrade);
     SAFE_DELETE(m_pNewNPCQuest);
     SAFE_DELETE(m_pNewMyQuestInfoWindow);
+    g_pJewelBankWindow = nullptr;
+    SAFE_DELETE(m_pJewelBankWindow);
     g_pMuPassWindow = nullptr;
     SAFE_DELETE(m_pMuPassWindow);
     SAFE_DELETE(m_pNewCharacterInfoWindow);
@@ -795,6 +803,17 @@ void CNewUISystem::Show(DWORD dwKey)
             Hide(INTERFACE_PET);
         }
         g_pMyQuestInfoWindow->OpenningProcess();
+    }
+    else if (dwKey == INTERFACE_JEWELBANK)
+    {
+        // הבנק נועד לעבוד מול התיק — פותחים אותם יחד ומצמידים את הבנק ליד התיק,
+        // אחרת אי-אפשר להפקיד (Ctrl + ימני על פריט בתיק).
+        m_pNewUIMng->ShowInterface(INTERFACE_INVENTORY);
+        g_pMainFrame->SetBtnState(MAINFRAME_BTN_MYINVEN, true);
+        if (g_pJewelBankWindow != nullptr)
+        {
+            g_pJewelBankWindow->SetPos(PanelColumnX(1) - CJewelBankWindow::WND_WIDTH - 8, CJewelBankWindow::WND_POS_Y);
+        }
     }
     else if (dwKey == INTERFACE_MUPASS)
     {

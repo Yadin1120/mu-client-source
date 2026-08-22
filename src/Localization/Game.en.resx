@@ -12988,6 +12988,21 @@
   <data name="Ends in %d days" xml:space="preserve">
     <value>Ends in %d days</value>
   </data>
+  <data name="Jewel Bank" xml:space="preserve">
+    <value>Jewel Bank</value>
+  </data>
+  <data name="Ctrl + right-click to deposit" xml:space="preserve">
+    <value>Ctrl + right-click to deposit</value>
+  </data>
+  <data name="%d free slots" xml:space="preserve">
+    <value>%d free slots</value>
+  </data>
+  <data name="Fill" xml:space="preserve">
+    <value>Fill</value>
+  </data>
+  <data name="Loading..." xml:space="preserve">
+    <value>Loading...</value>
+  </data>
   <data name="What is MU Pass?" xml:space="preserve">
     <value>What is MU Pass?</value>
   </data>

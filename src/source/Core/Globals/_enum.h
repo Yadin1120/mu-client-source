@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 namespace SEASON3A
 {
@@ -111,6 +111,7 @@ namespace SEASON3B
         INTERFACE_MUHELPER_SKILL_LIST,
         INTERFACE_SYSTEMLOGWINDOW,
         INTERFACE_MUPASS,
+        INTERFACE_JEWELBANK,
         INTERFACE_END,
         INTERFACE_COUNT = INTERFACE_END - 2,
     };

@@ -24,6 +24,7 @@
 #include "Network/Reconnect/ReconnectManager.h"
 #include "Network/IncomingPacketQueue.h"
 #include "Network/MuPass/MuPassProtocol.h"
+#include "Network/JewelBank/JewelBankProtocol.h"
 #include "I18N/All.h"
 
 #include "Audio/DSPlaySound.h"
@@ -14836,6 +14837,9 @@ static void ProcessPacket(const BYTE* ReceiveBuffer, int32_t Size)
                 break;
             case 0x22:
                 Network::MuPass::ReceiveRewardTrack(ReceiveBuffer);
+                break;
+            case 0x30:
+                Network::JewelBank::ReceiveState(ReceiveBuffer);
                 break;
             }
 

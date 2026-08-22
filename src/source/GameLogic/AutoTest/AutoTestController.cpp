@@ -1,4 +1,4 @@
-#include "stdafx.h"
+﻿#include "stdafx.h"
 #include "AutoTestController.h"
 
 #ifndef _WIN32
@@ -76,6 +76,7 @@ namespace
         { SEASON3B::INTERFACE_HELP,             "help" },
         { SEASON3B::INTERFACE_MUHELPER,         "muhelper" },
         { SEASON3B::INTERFACE_CHATLOGWINDOW,    "chatlog" },
+        { SEASON3B::INTERFACE_JEWELBANK,       "jewelbank" },
         { SEASON3B::INTERFACE_MINI_MAP,         "minimap" },
     };
 

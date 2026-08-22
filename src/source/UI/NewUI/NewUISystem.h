@@ -1,4 +1,4 @@
-#ifndef _NEWUISYSTEM_H_
+﻿#ifndef _NEWUISYSTEM_H_
 #define _NEWUISYSTEM_H_
 
 #pragma once
@@ -29,6 +29,7 @@
 #include "UI/NewUI/Character/NewUICharacterInfoWindow.h"
 #include "UI/NewUI/Quests/NewUIMyQuestInfoWindow.h"
 #include "UI/NewUI/MuPass/MuPassWindow.h"
+#include "UI/NewUI/JewelBank/JewelBankWindow.h"
 #include "UI/NewUI/Party/NewUIPartyInfoWindow.h"
 #include "UI/NewUI/Party/NewUIPartyListWindow.h"
 #include "UI/NewUI/Quests/NewUINPCQuest.h"
@@ -173,6 +174,7 @@ namespace SEASON3B
         CNewUICharacterInfoWindow* m_pNewCharacterInfoWindow;
         CNewUIMyQuestInfoWindow* m_pNewMyQuestInfoWindow;
         CMuPassWindow* m_pMuPassWindow;
+        CJewelBankWindow* m_pJewelBankWindow;
         CNewUIPartyInfoWindow* m_pNewPartyInfoWindow;
         CNewUIPartyListWindow* m_pNewPartyListWindow;
         CNewUINPCQuest* m_pNewNPCQuest;

@@ -1,4 +1,4 @@
-// NewUIPersonalInventory.h: interface for the CNewUIMyInventory class.
+﻿// NewUIPersonalInventory.h: interface for the CNewUIMyInventory class.
 //////////////////////////////////////////////////////////////////////
 
 #if !defined(AFX_NEWUIMYINVENTORY_H__74DA6D7A_CF5A_46E9_8C72_9D38F0DC95EC__INCLUDED_)
@@ -194,6 +194,8 @@ namespace SEASON3B
         void RenderButtons();
         void RenderInventoryDetails() const;
 
+        // Ctrl + right-click on a jewel deposits it into the jewel bank window.
+        bool TryDepositJewelToBank();
         bool EquipmentWindowProcess();
         bool InventoryProcess() const;
         bool BtnProcess();

@@ -1,4 +1,4 @@
-#include "stdafx.h"
+﻿#include "stdafx.h"
 #include "I18N/All.h"
 
 #include "UI/NewUI/HUD/NewUIHotKey.h"
@@ -204,6 +204,13 @@ bool SEASON3B::CNewUIHotKey::UpdateKeyEvent()
     else if (SEASON3B::IsPress('C'))
     {
         g_pNewUISystem->Toggle(SEASON3B::INTERFACE_CHARACTER);
+        PlayBuffer(SOUND_CLICK01);
+        return false;
+    }
+    else if (SEASON3B::IsPress('J'))
+    {
+        // מקש J — בנק היהלומים, כמו בשרתי עונה 6 אחרים.
+        g_pNewUISystem->Toggle(SEASON3B::INTERFACE_JEWELBANK);
         PlayBuffer(SOUND_CLICK01);
         return false;
     }
